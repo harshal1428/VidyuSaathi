@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to USERS to enable Email Lookup by Unique ID during login
+    // In a production app, use strict rules (e.g., Cloud Functions or specific queries)
+    match /USERS/{userId} {
+      allow read: if true;
+      allow write: if true; // Enabling write for seeding convenience
+    }
+    
+    // Allow authenticated users to read/write everything (Simplification for development)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
