@@ -1,0 +1,61 @@
+complaint,category,response_time,resolution_time
+Noise from transformer,A1 (High),1 hour,6 hours
+Major blackout in entire colony,E (Critical),15 minutes,2 hours
+Loose wire hanging without danger,A3 (Low),12 hours,72 hours
+Wires hanging low on street,A2 (Medium),6 hours,24 hours
+Frequent voltage fluctuation in house,A1 (High),1 hour,6 hours
+Complaint of high bill without usage,A3 (Low),12 hours,72 hours
+Fuse blown at transformer,A1 (High),1 hour,6 hours
+Loose connection at electric pole,A1 (High),1 hour,6 hours
+Old wooden electric pole needs replacement,A3 (Low),12 hours,72 hours
+Electric pole fallen on road,E (Critical),15 minutes,2 hours
+School building exposed to live wires,E (Critical),15 minutes,2 hours
+Sparking in electric substation,E (Critical),15 minutes,2 hours
+High voltage fluctuation risking appliances,E (Critical),15 minutes,2 hours
+Street lights flickering in entire lane,A1 (High),1 hour,6 hours
+One or two houses without power,A2 (Medium),6 hours,24 hours
+Electric bill not generated,A3 (Low),12 hours,72 hours
+Single phase outage in colony,A1 (High),1 hour,6 hours
+Need new street light installation,A3 (Low),12 hours,72 hours
+Street light wire cut,A2 (Medium),6 hours,24 hours
+Transformer blast in the area,E (Critical),15 minutes,2 hours
+Power cut during daytime,A2 (Medium),6 hours,24 hours
+Phase imbalance in area,A1 (High),1 hour,6 hours
+Meter reading not updated,A3 (Low),12 hours,72 hours
+Low voltage supply at night,A2 (Medium),6 hours,24 hours
+Fan speed very low due to low supply,A2 (Medium),6 hours,24 hours
+Damaged meter causing sparks,A1 (High),1 hour,6 hours
+Sudden outage in half of the colony,A1 (High),1 hour,6 hours
+Electric pole rusted,A3 (Low),12 hours,72 hours
+Meter box broken cover,A2 (Medium),6 hours,24 hours
+Appliances damaged due to fluctuations,A2 (Medium),6 hours,24 hours
+Burning smell from transformer,E (Critical),15 minutes,2 hours
+Water pump not working due to electric fault,A1 (High),1 hour,6 hours
+Hospital power outage,E (Critical),15 minutes,2 hours
+Street light cover missing,A3 (Low),12 hours,72 hours
+Frequent power cuts in evening,A2 (Medium),6 hours,24 hours
+Tree branches touching electric wire (no sparks),A3 (Low),12 hours,72 hours
+Electric fire due to short circuit,E (Critical),15 minutes,2 hours
+Street light not working,A2 (Medium),6 hours,24 hours
+Live wire in water puddle,E (Critical),15 minutes,2 hours
+Small fuse replacement required,A3 (Low),12 hours,72 hours
+Transformer oil leakage,E (Critical),15 minutes,2 hours
+Transformer overheating,E (Critical),15 minutes,2 hours
+Distribution box open and unsafe,A3 (Low),12 hours,72 hours
+Street light pole rusted and unstable,A2 (Medium),6 hours,24 hours
+Electric meter sparking,E (Critical),15 minutes,2 hours
+Meter seal broken,A2 (Medium),6 hours,24 hours
+Power supply tripping repeatedly,A1 (High),1 hour,6 hours
+Cable joint damaged,A3 (Low),12 hours,72 hours
+Underground cable fault,A3 (Low),12 hours,72 hours
+Overloaded transformer in area,A3 (Low),12 hours,72 hours
+Electric pole leaning dangerously,A2 (Medium),6 hours,24 hours
+Tree branches touching power lines,A3 (Low),12 hours,72 hours
+Substation fence damaged,E (Critical),15 minutes,2 hours
+Unauthorized load causing outage,A1 (High),1 hour,6 hours
+Phase failure in locality,A1 (High),1 hour,6 hours
+Power surge damaging appliances,A1 (High),1 hour,6 hours
+Frequent fuse burnouts,A3 (Low),12 hours,72 hours
+Service line snapped,E (Critical),15 minutes,2 hours
+Water leakage near electric cables,A3 (Low),12 hours,72 hours
+Open junction box on roadside,A2 (Medium),6 hours,24 hours

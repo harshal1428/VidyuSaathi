@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/ticket_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
+import 'ticket_detail_screen.dart';
 
 class MyReportsScreen extends StatelessWidget {
   const MyReportsScreen({super.key});
@@ -23,6 +24,13 @@ class MyReportsScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          if (snapshot.hasError) {
+            return Center(child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Error loading reports: ${snapshot.error}'),
+            ));
+          }
           
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No reports found'));
@@ -38,6 +46,14 @@ class MyReportsScreen extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 child: ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CitizenTicketDetailScreen(ticket: ticket),
+                      ),
+                    );
+                  },
                   title: Text(ticket.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,3 +95,5 @@ class MyReportsScreen extends StatelessWidget {
     }
   }
 }
+
+

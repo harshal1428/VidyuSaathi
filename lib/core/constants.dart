@@ -8,13 +8,13 @@ class AppConstants {
   static const String roleAdmin = 'ADMIN';
 
   // Officer Designations
-  static const String desFieldEngineer = 'Field Engineer';
-  static const String desJE = 'JE';
-  static const String desAE = 'AE';
-  static const String desDYEE = 'DYEE';
-  static const String desEE = 'EE';
-  static const String desSE = 'SE';
-  static const String desCE = 'CE';
+  static const String desFieldEngineer = 'Field Engineer (FE)';
+  static const String desJE = 'Junior Engineer (JE)';
+  static const String desAE = 'Assistant Engineer (AE)';
+  static const String desDYEE = 'Deputy Executive Engineer (DYEE)';
+  static const String desEE = 'Executive Engineer (EE)';
+  static const String desSE = 'Superintending Engineer (SE)';
+  static const String desCE = 'Chief Engineer (CE)';
 
   static const List<String> officerDesignations = [
     desFieldEngineer,
@@ -36,6 +36,12 @@ class AppConstants {
   static const String statusResolved = 'Resolved';
   static const String statusClosed = 'Closed';
   
+  // Routes
+  static const String routeLogin = '/';
+  static const String routeAdminDashboard = '/admin_dashboard';
+  static const String routeOfficerDashboard = '/officer_dashboard';
+  static const String routeCitizenDashboard = '/citizen_dashboard';
+
   // Ticket Categories (Example)
   static const List<String> ticketCategories = [
     'Power Failure',
@@ -47,3 +53,5 @@ class AppConstants {
     'Other',
   ];
 }
+
+

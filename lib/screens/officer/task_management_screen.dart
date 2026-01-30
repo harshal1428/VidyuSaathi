@@ -4,6 +4,7 @@ import '../../models/ticket_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../core/constants.dart';
+import 'officer_ticket_detail_screen.dart';
 
 class TaskManagementScreen extends StatelessWidget {
   const TaskManagementScreen({super.key});
@@ -42,7 +43,7 @@ class TaskManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: StreamBuilder<List<TicketModel>>(
-        stream: dbService.getOfficerTickets(user!.userId, user.role, status: statusFilter),
+        stream: dbService.getOfficerTickets(user!, status: statusFilter),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -76,7 +77,14 @@ class _TicketCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: InkWell(
+        onTap: () {
+            Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => OfficerTicketDetailScreen(ticket: ticket)),
+          );
+        },
+        child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,6 +108,7 @@ class _TicketCard extends StatelessWidget {
             _buildActionButtons(context, ticket),
           ],
         ),
+      ),
       ),
     );
   }
@@ -160,3 +169,5 @@ class _TicketCard extends StatelessWidget {
     );
   }
 }
+
+

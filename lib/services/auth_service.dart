@@ -13,6 +13,38 @@ class AuthService extends ChangeNotifier {
 
   bool get isAuthenticated => _auth.currentUser != null;
 
+  // Initialization Logic
+  // Initialization Logic
+  bool _isInitializing = true;
+  bool get isInitializing => _isInitializing;
+
+  AuthService() {
+    _auth.authStateChanges().listen((User? user) {
+      if (user == null) {
+        _currentUser = null;
+        _isInitializing = false;
+        notifyListeners();
+      } else {
+        _fetchUser(user.uid);
+      }
+    });
+  }
+  
+  Future<void> _fetchUser(String uid) async {
+      try {
+        DocumentSnapshot doc = await _firestore.collection('USERS').doc(uid).get();
+        if (doc.exists) {
+          _currentUser = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+        }
+      } catch (e) {
+        print("Error fetching user: $e");
+      } finally {
+        _isInitializing = false;
+        notifyListeners();
+      }
+  }
+
+
   // Citizen Registration
   Future<void> registerCitizen({
     required String email,
@@ -36,7 +68,9 @@ class AuthService extends ChangeNotifier {
         email: email,
         phone: phone,
         role: AppConstants.roleCitizen,
+        designation: 'Citizen', // Default for citizens
         createdAt: DateTime.now(),
+        isActive: true,
         address: address,
         consumerNumber: consumerNumber,
       );
@@ -85,54 +119,72 @@ class AuthService extends ChangeNotifier {
         if (email.isEmpty) throw Exception('Email not found for User ID "$identifier".');
       }
 
-      // 3. Authenticate with Firebase Auth
+      // 3. Authenticate
+      UserCredential cred;
       try {
-        UserCredential cred = await _auth.signInWithEmailAndPassword(
+        cred = await _auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-          throw Exception('User "$email" not found in Authentication System. \n\nIMPORTANT: You must manually create this user in Firebase Console > Authentication with password "$password".');
+          // AUTO-REGISTRATION FOR SEEDED OFFICERS
+          if (isOfficer) {
+             print("User not found in Auth. Attempting auto-registration for seeded officer: $email");
+             try {
+                cred = await _auth.createUserWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
+                // Continue to migration logic below
+             } catch (regError) {
+                print("Auto-registration failed: $regError");
+                throw Exception('Login Failed: $regError'); 
+             }
+          } else {
+             throw Exception('User "$email" not found. Please register first.');
+          }
+        } else {
+          rethrow;
         }
-        rethrow;
       }
 
-      // 4. Fetch User Data to confirm and get Role
-      // Use the Auth UID here, because we need to map Auth User -> Firestore User
-      // But wait... for officers, we just found their Firestore Doc (which has DocID = SE001).
-      // The Auth UID (random) MUST match a Firestore doc...
-      // PROBLEM:
-      // If we create a user in Auth, they get a Random UID (e.g. "Abs7...").
-      // Our Firestore Doc is "SE001".
-      // They are NOT linked.
-      // When we login with Auth, `cred.user!.uid` will be "Abs7...".
-      // We explicitly check `_firestore.collection('USERS').doc(cred.user!.uid)`.
-      // It will NOT exist.
-      
-      // SOLUTION:
-      // We need to link them.
-      // Option A: Update the Firestore Doc ID to match Auth UID on first login.
-      // Option B: Store Auth UID in the existing "SE001" doc? No.
-      // Option C: Update the `userId` field to match Auth UID? No.
-      
-      // FIX logic:
-      // If we are Officer, we know the firestore doc is at `identifier` (e.g. SE001).
-      // We should use THAT document.
-      // We don't need to re-fetch by Auth UID.
-      
+      // 4. Fetch/Migrate User Data
       if (isOfficer) {
-         // Re-fetch strictly to ensure variable assignment
-         DocumentSnapshot doc = await _firestore.collection('USERS').doc(identifier).get();
-         _currentUser = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+         // Check if the Auth UID document already exists
+         DocumentSnapshot authDoc = await _firestore.collection('USERS').doc(cred.user!.uid).get();
+         
+         if (authDoc.exists) {
+           _currentUser = UserModel.fromMap(authDoc.data() as Map<String, dynamic>);
+         } else {
+           // JIT Migration: Copy seeded data (at 'identifier') to Auth UID location
+           print('Performing JIT Migration for Officer ${cred.user!.uid} from $identifier');
+           
+           DocumentSnapshot seededDoc = await _firestore.collection('USERS').doc(identifier).get();
+           if (seededDoc.exists) {
+             Map<String, dynamic> data = seededDoc.data() as Map<String, dynamic>;
+             
+             // Update userId to match Auth UID
+             data['userId'] = cred.user!.uid;
+             
+             // Save to new location
+             await _firestore.collection('USERS').doc(cred.user!.uid).set(data);
+             
+             // Optional: Delete old doc to prevent duplicate claims? 
+             // await _firestore.collection('USERS').doc(identifier).delete(); 
+             
+             _currentUser = UserModel.fromMap(data);
+           } else {
+             // Fallback if neither exist (shouldn't happen if identifier check passed)
+              throw Exception('Officer profile data lost.');
+           }
+         }
       } else {
-         // Citizen: DocID = Auth UID
-         User? u = _auth.currentUser;
-         DocumentSnapshot doc = await _firestore.collection('USERS').doc(u!.uid).get();
+         // Citizen
+         DocumentSnapshot doc = await _firestore.collection('USERS').doc(cred.user!.uid).get();
          if (doc.exists) {
            _currentUser = UserModel.fromMap(doc.data() as Map<String, dynamic>);
          } else {
-             // Citizen registered but no data?
              throw Exception('Citizen profile not found.');
          }
       }
@@ -149,15 +201,6 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Initialize (check current user)
-  Future<void> initialize() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      DocumentSnapshot doc = await _firestore.collection('USERS').doc(user.uid).get();
-      if (doc.exists) {
-        _currentUser = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-        notifyListeners();
-      }
-    }
-  }
 }
+
+

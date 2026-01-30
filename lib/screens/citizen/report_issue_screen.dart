@@ -5,10 +5,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
 import '../../models/ticket_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
+import '../../models/complaint_type_model.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -19,7 +21,12 @@ class ReportIssueScreen extends StatefulWidget {
 
 class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _selectedTitle;
+  
+  // Complaint Data
+  List<ComplaintTypeModel> _complaintTypes = [];
+  ComplaintTypeModel? _selectedComplaintType;
+  final TextEditingController _titleController = TextEditingController(); // For Autocomplete
+
   final TextEditingController _descriptionController = TextEditingController();
   
   Position? _currentPosition;
@@ -29,6 +36,23 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final ImagePicker _picker = ImagePicker();
   
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchComplaintTypes();
+  }
+
+  Future<void> _fetchComplaintTypes() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('COMPLAINT_TYPES').get();
+      setState(() {
+        _complaintTypes = snapshot.docs.map((d) => ComplaintTypeModel.fromMap(d.data())).toList();
+      });
+    } catch (e) {
+      print("Error fetching complaint types: $e");
+    }
+  }
 
   Future<void> _getCurrentLocation() async {
     setState(() => _gettingLocation = true);
@@ -94,35 +118,49 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         for (var i = 0; i < _selectedImages.length; i++) {
           try {
             String fileName = '${const Uuid().v4()}.jpg';
-            // Ensure the Reference is valid.
             Reference ref = FirebaseStorage.instance.ref().child('ticket_images').child(fileName);
-            
-            // Set metadata to ensure the server treats it as an image
             SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
-
             await ref.putFile(File(_selectedImages[i].path), metadata);
             String downloadUrl = await ref.getDownloadURL();
             imageUrls.add(downloadUrl);
           } catch (e) {
              print("Image upload failed: $e");
-             // Decide whether to fail the whole ticket or just skip the image.
-             // For strict correctness, we fail explaining why.
              throw Exception("Failed to upload image ${i + 1}. Check internet or storage permissions.");
           }
         }
 
+        // Determine Priority from selected type or default
+        String priority = 'Medium';
+        String category = 'General';
+        int? slaHours;
+        
+        if (_selectedComplaintType != null && _selectedComplaintType!.title == _titleController.text) {
+           priority = _selectedComplaintType!.priority;
+           category = _selectedComplaintType!.category;
+           
+           // Simple SLA parsing
+           if (_selectedComplaintType!.slaResolution.contains('hour')) {
+             slaHours = int.tryParse(_selectedComplaintType!.slaResolution.split(' ')[0]);
+           } else {
+             slaHours = 1; 
+           }
+        } else {
+          category = _titleController.text;
+        }
+
         final ticket = TicketModel(
           ticketId: const Uuid().v4(),
-          title: _selectedTitle!,
+          title: _titleController.text,
           description: _descriptionController.text,
-          category: _selectedTitle!, // Using title as category for now
-          priority: 'Medium',
+          category: category,
+          priority: priority,
           status: AppConstants.statusCreated,
           citizenId: user.userId,
           createdAt: DateTime.now(),
           latitude: _currentPosition!.latitude,
           longitude: _currentPosition!.longitude,
           imageUrls: imageUrls,
+          slaHours: slaHours,
         );
 
         await Provider.of<DatabaseService>(context, listen: false).createTicket(ticket);
@@ -156,17 +194,64 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<String>(
-                value: _selectedTitle,
-                decoration: const InputDecoration(labelText: 'Issue Title'),
-                items: AppConstants.ticketCategories
-                    .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedTitle = val),
-                validator: (val) => val == null ? 'Required' : null,
+              // Autocomplete for Title
+              Autocomplete<ComplaintTypeModel>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text == '') {
+                    return const Iterable<ComplaintTypeModel>.empty();
+                  }
+                  return _complaintTypes.where((ComplaintTypeModel option) {
+                    return option.title.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                  });
+                },
+                displayStringForOption: (ComplaintTypeModel option) => option.title,
+                onSelected: (ComplaintTypeModel selection) {
+                  setState(() {
+                    _selectedComplaintType = selection;
+                    _titleController.text = selection.title;
+                  });
+                },
+                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                   // Sync controllers if externally updated (e.g. by setstate reset)
+                   if (textEditingController.text != _titleController.text && _titleController.text.isNotEmpty) {
+                      // Only sync if main controller has value. 
+                      // Warning: Mutual sync issues can happen.
+                      // Ideally use the controller passed here.
+                      // But we need to access text outside.
+                   }
+                   
+                   return TextFormField(
+                     controller: textEditingController,
+                     focusNode: focusNode,
+                     decoration: const InputDecoration(labelText: 'Issue Title (Auto-suggest)'),
+                     validator: (val) {
+                       if (val == null || val.isEmpty) return 'Required';
+                       _titleController.text = val; // Ensure capture
+                       return null;
+                     },
+                     onChanged: (val) {
+                       _titleController.text = val;
+                       if (_selectedComplaintType != null && val != _selectedComplaintType!.title) {
+                         _selectedComplaintType = null;
+                         setState(() {}); // refresh UI to hide priority box
+                       }
+                     },
+                   );
+                },
               ),
               const SizedBox(height: 16),
               
+              // Hiding Priority and SLA from Citizen as requested
+              // if (_selectedComplaintType != null)
+              //    Padding(
+              //      padding: const EdgeInsets.only(bottom: 16.0),
+              //      child: Container(
+              //        padding: const EdgeInsets.all(8),
+              //        color: Colors.blue[50],
+              //        child: Text("Priority: ${_selectedComplaintType!.priority} | Resolution SLA: ${_selectedComplaintType!.slaResolution}"),
+              //      ),
+              //    ),
+
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(labelText: 'Description'),
@@ -200,10 +285,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     icon: const Icon(Icons.camera_alt),
                     onPressed: () => _pickImage(ImageSource.camera),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.photo_library),
-                    onPressed: () => _pickImage(ImageSource.gallery),
-                  ),
+                  // Gallery option removed as per feedback to prevent fake complaints
                 ],
               ),
               if (_selectedImages.isNotEmpty)
@@ -256,3 +338,5 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 }
+
+

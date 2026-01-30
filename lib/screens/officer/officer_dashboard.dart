@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants.dart';
 import '../../services/auth_service.dart';
-import '../../widgets/app_drawer.dart';
+import 'dashboards/ce_dashboard_screen.dart';
+import 'dashboards/se_dashboard_screen.dart';
+import 'dashboards/ee_dashboard_screen.dart';
+import 'dashboards/dyee_dashboard_screen.dart';
+import 'dashboards/je_dashboard_screen.dart';
+import 'dashboards/ae_dashboard_screen.dart';
+import 'dashboards/fe_dashboard_screen.dart';
+
+import '../../widgets/common/logout_confirmation_wrapper.dart';
 
 class OfficerDashboard extends StatelessWidget {
   const OfficerDashboard({super.key});
@@ -10,143 +17,59 @@ class OfficerDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).currentUser;
+
+    if (user == null) {
+      return const Scaffold(body: Center(child: Text('Please login')));
+    }
+
+    // Dispatch based on Role or Designation
+    final role = (user.role ?? '').toUpperCase();
+    final desig = (user.designation ?? '').toUpperCase();
     
-    if (user == null) return const Scaffold(body: Center(child: Text('Please login')));
+    Widget dashboardWidget;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${user.designation ?? "Officer"} Dashboard'),
-        actions: [
-          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Metrics Section (Generic implementation as per prompt requirements)
-            Row(
-              children: [
-                Expanded(child: _MetricCard(label: 'Total Tickets', value: '120', color: Colors.blue)),
-                const SizedBox(width: 16),
-                Expanded(child: _MetricCard(label: 'Pending', value: '45', color: Colors.orange)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _MetricCard(label: 'Resolved', value: '75', color: Colors.green)),
-                const SizedBox(width: 16),
-                Expanded(child: _MetricCard(label: 'Escalated', value: '5', color: Colors.red)),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            const Text('Task Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            
-            // Task Management Buttons
-            _TaskButton(
-              label: 'My Tasks',
-              icon: Icons.assignment_ind,
-              onTap: () => Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': 'my_tasks'}),
-            ),
-            _TaskButton(
-              label: 'Pending Tasks',
-              icon: Icons.pending_actions,
-              onTap: () => Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': 'pending'}),
-            ),
-            _TaskButton(
-              label: 'In Progress',
-              icon: Icons.run_circle,
-              onTap: () => Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': 'in_progress'}),
-            ),
-            _TaskButton(
-              label: 'Completed',
-              icon: Icons.check_circle,
-              onTap: () => Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': 'completed'}),
-            ),
-
-            const SizedBox(height: 24),
-            const Text('Other Modules (Not Working)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
-            const SizedBox(height: 16),
-            
-            // "Not Working" Sections
-            const _DisabledSection(label: 'Inventory Management'),
-            const _DisabledSection(label: 'Staff Attendance'),
-            const _DisabledSection(label: 'Maintenance Schedule'),
-          ],
+    // Map roles to dashboard widgets
+    if (desig.contains('CHIEF') || desig == 'CE' || role == 'CE') {
+      dashboardWidget = CEDashboardScreen(userRole: user.role ?? 'CE', userName: user.name ?? 'Chief Engineer');
+    } else if (desig.contains('SUPERINTEND') || desig == 'SE' || role == 'SE') {
+      dashboardWidget = SEDashboardScreen(userRole: user.role ?? 'SE', userName: user.name ?? 'Superintending Engineer');
+    } else if (desig.contains('DEPUTY') || desig == 'DYEE' || desig == 'DE' || role == 'DYEE' || role == 'DE') {
+       // Check DyEE BEFORE EE to match "Deputy Executive Engineer" correctly
+       dashboardWidget = DyEEDashboardScreen(userRole: user.role ?? 'DyEE', userName: user.name ?? 'Deputy Executive Engineer');
+    } else if (desig.contains('EXECUTIVE') || desig == 'EE' || role == 'EE') {
+       dashboardWidget = EEDashboardScreen(userRole: user.role ?? 'EE', userName: user.name ?? 'Executive Engineer');
+    } else if (desig.contains('ASSISTANT') || desig == 'AE' || role == 'AE') {
+       dashboardWidget = AEDashboardScreen(userRole: user.role ?? 'AE', userName: user.name ?? 'Assistant Engineer');
+    } else if (desig.contains('JUNIOR') || desig == 'JE' || role == 'JE') {
+       dashboardWidget = JEDashboardScreen(userRole: user.role ?? 'JE', userName: user.name ?? 'Junior Engineer');
+    } else if (desig.contains('FIELD') || desig == 'FE' || desig == 'TECHNICIAN' || role == 'FE') {
+       dashboardWidget = FEDashboardScreen(userRole: user.role ?? 'FE', userName: user.name ?? 'Field Engineer');
+    } else {
+       // Default Fallback
+       dashboardWidget = Scaffold(
+        appBar: AppBar(title: const Text('Officer Dashboard')),
+        body: Center(
+          child: Text('Unknown Officer Role: ${user.designation}'),
         ),
-      ),
-    );
+      );
+    }
+    
+    return LogoutConfirmationWrapper(child: dashboardWidget);
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
+abstract class OfficerDashboardTemplate extends StatefulWidget {
+  final String userRole;
+  final String userName;
 
-  const _MetricCard({required this.label, required this.value, required this.color});
+  const OfficerDashboardTemplate({
+    Key? key,
+    required this.userRole,
+    required this.userName,
+  }) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: color.withOpacity(0.8))),
-        ],
-      ),
-    );
-  }
+  Widget buildRoleSpecificContent(BuildContext context);
+  String getDashboardTitle();
 }
 
-class _TaskButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
 
-  const _TaskButton({required this.label, required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(icon, color: Theme.of(context).primaryColor),
-        title: Text(label),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
-class _DisabledSection extends StatelessWidget {
-  final String label;
-
-  const _DisabledSection({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.grey[200],
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const Icon(Icons.block, color: Colors.grey),
-        title: Text(label, style: const TextStyle(color: Colors.grey)),
-        trailing: const Text('Coming Soon', style: TextStyle(color: Colors.grey, fontSize: 12)),
-      ),
-    );
-  }
-}

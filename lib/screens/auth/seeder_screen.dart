@@ -12,42 +12,32 @@ class _SeederScreenState extends State<SeederScreen> {
   bool _isLoading = false;
   String _status = '';
   
-  // Pune Data
-  final List<Map<String, String>> _puneData = [
-    {'Role': 'CE', 'ID': '10000001', 'Name': 'Sanjay Patil', 'Email': 'sanjay.patil@mahavitaran.in'},
-    {'Role': 'SE', 'ID': '10000002', 'Name': 'Milind Deshmukh', 'Email': 'milind.deshmukh@mahavitaran.in'},
-    {'Role': 'EE', 'ID': '10000003', 'Name': 'Pravin Kulkarni', 'Email': 'pravin.kulkarni@mahavitaran.in'},
-    {'Role': 'DyEE', 'ID': '10000004', 'Name': 'Sachin Joshi', 'Email': 'sachin.joshi@mahavitaran.in'},
-    {'Role': 'AE', 'ID': '10000005', 'Name': 'Amol Jadhav', 'Email': 'amol.jadhav@mahavitaran.in'},
-    {'Role': 'JE', 'ID': '10000006', 'Name': 'Rohit Bhosale', 'Email': 'rohit.bhosale@mahavitaran.in'},
-    {'Role': 'Field Eng', 'ID': '10000007', 'Name': 'Nilesh Pawar', 'Email': 'nilesh.pawar@mahavitaran.in'},
-    {'Role': 'Admin', 'ID': '10000008', 'Name': 'Sunita Shinde', 'Email': 'sunita.shinde@mahavitaran.in'},
-  ];
-
-  // Swargate Data
-  final List<Map<String, String>> _swargateData = [
-    {'Role': 'CE', 'ID': '10000009', 'Name': 'Vijay Chavan', 'Email': 'vijay.chavan@mahavitaran.in'},
-    {'Role': 'SE', 'ID': '10000010', 'Name': 'Anil Phadke', 'Email': 'anil.phadke@mahavitaran.in'},
-    {'Role': 'EE', 'ID': '10000011', 'Name': 'Mahesh Gokhale', 'Email': 'mahesh.gokhale@mahavitaran.in'},
-    {'Role': 'DyEE', 'ID': '10000012', 'Name': 'Kiran Kulkarni', 'Email': 'kiran.kulkarni@mahavitaran.in'},
-    {'Role': 'AE', 'ID': '10000013', 'Name': 'Swapnil More', 'Email': 'swapnil.more@mahavitaran.in'},
-    {'Role': 'JE', 'ID': '10000014', 'Name': 'Akshay Gaikwad', 'Email': 'akshay.gaikwad@mahavitaran.in'},
-    {'Role': 'Field Eng', 'ID': '10000015', 'Name': 'Suresh Kapse', 'Email': 'suresh.kapse@mahavitaran.in'},
-    {'Role': 'Admin', 'ID': '10000016', 'Name': 'Rekha Kale', 'Email': 'rekha.kale@mahavitaran.in'},
+  // Data for Display Only (Verification)
+  final List<Map<String, String>> _hierarchyData = [
+    {'Role': 'CE', 'ID': '10000001', 'Name': 'Sanjay Patil', 'Loc': 'Pune HQ'},
+    {'Role': 'SE', 'ID': '10000002', 'Name': 'Milind Deshmukh', 'Loc': 'Circle 1'},
+    {'Role': 'EE', 'ID': '10000003', 'Name': 'Pravin Kulkarni', 'Loc': 'Region 1'},
+    {'Role': 'DyEE', 'ID': '10000004', 'Name': 'Sachin Joshi', 'Loc': 'Region 1'},
+    {'Role': 'JE', 'ID': '10000005', 'Name': 'Rohit Bhosale', 'Loc': 'Office 1'},
+    {'Role': 'AE', 'ID': '10000006', 'Name': 'Amol Jadhav', 'Loc': 'Office 1'},
+    {'Role': 'JE', 'ID': '10000016', 'Name': 'Kunal Desai', 'Loc': 'Office 4 (Reg 2)'},
+    {'Role': 'SE', 'ID': '10000019', 'Name': 'Anil Phadke', 'Loc': 'Circle 2'},
+    {'Role': 'EE', 'ID': '10000020', 'Name': 'Vijay Chavan', 'Loc': 'Region 3'},
+    {'Role': 'JE', 'ID': '10000035', 'Name': 'Rohan Pawar', 'Loc': 'Office 8 (Reg 4)'},
   ];
 
   void _runSeeder() async {
     setState(() {
       _isLoading = true;
-      _status = 'Running Seeder...';
+      _status = 'Running Hierarchical Seeder...';
     });
 
     try {
       final seeder = SeederService();
-      await seeder.seedPuneDivision();
+      await seeder.seedHierarchicalData();
       
       setState(() {
-        _status = 'Success! Data seeded in Firestore.\n\nIMPORTANT: You must manually create these users in Firebase Console > Authentication with the emails below and password "123456".';
+        _status = 'Success! Full Structure (Pune Division) seeded.\n\nCREATE AUTH ACCOUNTS MANUALLY (Password 123456).';
       });
     } catch (e) {
       setState(() {
@@ -66,9 +56,34 @@ class _SeederScreenState extends State<SeederScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            const Text(
+              'Warning: This will overwrite existing users and structure data.',
+              style: TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _isLoading ? null : _runSeeder,
-              child: _isLoading ? const CircularProgressIndicator() : const Text('Seed Pune & Swargate Data'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Seed Full Hierarchy (Pune)'),
+            ),
+            const SizedBox(height: 16),
+             ElevatedButton(
+              onPressed: _isLoading ? null : () async {
+                 setState(() {
+                  _isLoading = true;
+                  _status = 'Seeding Complaints...';
+                });
+                try {
+                  await SeederService().seedHierarchicalData();
+                  await SeederService().seedComplaintTypes();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Seeding Complete!")));
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                } finally {
+                  setState(() => _isLoading = false);
+                }
+              },
+              child: _isLoading ? const CircularProgressIndicator() : const Text("Run Database Seeder"),
             ),
             const SizedBox(height: 24),
             if (_status.isNotEmpty) ...[
@@ -80,14 +95,9 @@ class _SeederScreenState extends State<SeederScreen> {
                const SizedBox(height: 24),
             ],
             
-            const Text('Pune Region', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text('Sample of Seeded Data (Total 35 Users)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            _buildTable(_puneData),
-            
-            const SizedBox(height: 24),
-            const Text('Swargate Region', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 8),
-            _buildTable(_swargateData),
+            _buildTable(_hierarchyData),
           ],
         ),
       ),
@@ -99,9 +109,8 @@ class _SeederScreenState extends State<SeederScreen> {
       border: TableBorder.all(color: Colors.grey),
       columnWidths: const {
         0: FlexColumnWidth(1),
-        1: FlexColumnWidth(1.2),
+        1: FlexColumnWidth(1),
         2: FlexColumnWidth(1.5),
-        3: FlexColumnWidth(2.5),
       },
       children: [
         TableRow(
@@ -110,15 +119,15 @@ class _SeederScreenState extends State<SeederScreen> {
             Padding(padding: EdgeInsets.all(8), child: Text('Role', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
             Padding(padding: EdgeInsets.all(8), child: Text('ID', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
             Padding(padding: EdgeInsets.all(8), child: Text('Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-            Padding(padding: EdgeInsets.all(8), child: Text('Email', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
           ]),
         ...data.map((c) => TableRow(children: [
           Padding(padding: const EdgeInsets.all(8), child: Text(c['Role']!, style: const TextStyle(fontSize: 12))),
           Padding(padding: const EdgeInsets.all(8), child: Text(c['ID']!, style: const TextStyle(fontSize: 12))),
           Padding(padding: const EdgeInsets.all(8), child: Text(c['Name']!, style: const TextStyle(fontSize: 12))),
-          Padding(padding: const EdgeInsets.all(8), child: Text(c['Email']!, style: const TextStyle(fontSize: 12))),
         ])),
       ],
     );
   }
 }
+
+

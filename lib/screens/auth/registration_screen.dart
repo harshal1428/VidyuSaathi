@@ -38,8 +38,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           password: _passwordController.text,
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
-          address: _addressController.text.trim(),
-          consumerNumber: _consumerController.text.trim(),
+          address: "", // Removed from form
+          consumerNumber: "", // Removed from form
         );
 
         if (mounted) {
@@ -85,7 +85,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 controller: _phoneController,
                 decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone)),
                 keyboardType: TextInputType.phone,
-                validator: (val) => val!.isEmpty ? 'Required' : null,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Required';
+                  if (val.length != 10) return 'Must be 10 digits';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -95,17 +99,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 validator: (val) => val!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.home)),
-                maxLines: 2,
-                validator: (val) => val!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _consumerController,
-                decoration: const InputDecoration(labelText: 'Consumer Number (Optional)', prefixIcon: Icon(Icons.numbers)),
-              ),
+              // Address and Consumer Number are not required as per user feedback
+              // Saved space logic here
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
@@ -137,3 +132,5 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 }
+
+

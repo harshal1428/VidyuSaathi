@@ -74,3 +74,4 @@ class DefaultFirebaseOptions {
     authDomain: 'vidyusaathi-dummy.firebaseapp.com',
   );
 }
+

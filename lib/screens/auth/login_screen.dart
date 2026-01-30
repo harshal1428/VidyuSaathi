@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../services/auth_service.dart';
+import '../../models/user_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    super.initState();
+    // Auto-redirect removed to allow explicit login/account switching
+  }
+  
+  void _redirectUser(UserModel user) {
+      if (user.role == AppConstants.roleCitizen) {
+        Navigator.pushReplacementNamed(context, '/citizen_dashboard');
+      } else if (user.role == AppConstants.roleAdmin) {
+        Navigator.pushReplacementNamed(context, '/admin_dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/officer_dashboard');
+      }
+  }
 
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
@@ -40,6 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
           if (user != null) {
             if (user.role == AppConstants.roleCitizen) {
               Navigator.pushReplacementNamed(context, '/citizen_dashboard');
+            } else if (user.role == AppConstants.roleAdmin || user.role == 'OFFICE_ADMIN' || user.designation == 'Admin') {
+              Navigator.pushReplacementNamed(context, '/admin_dashboard');
             } else {
               Navigator.pushReplacementNamed(context, '/officer_dashboard');
             }
@@ -178,6 +198,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
+              
+              // Dev Tool: Seeder Shortcut
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: TextButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/seeder'),
+                  icon: const Icon(Icons.dataset, size: 16),
+                  label: const Text('Dev: Seed Database'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                ),
+              ),
             ],
           ),
         ),
@@ -185,3 +216,5 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+

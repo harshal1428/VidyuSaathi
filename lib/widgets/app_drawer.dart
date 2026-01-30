@@ -66,7 +66,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Logout'),
             onTap: () {
               authService.logout();
-              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
             },
           ),
         ],
@@ -74,3 +74,5 @@ class AppDrawer extends StatelessWidget {
     );
   }
 }
+
+
