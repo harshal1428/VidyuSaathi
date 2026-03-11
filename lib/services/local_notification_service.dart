@@ -44,8 +44,8 @@ class LocalNotificationService {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'vidyusaathi_channel_id',
-      'VidyuSaathi Notifications',
-      channelDescription: 'Important updates for VidyuSaathi users',
+      'Vidyut SurakshaSaathi Notifications',
+      channelDescription: 'Important updates for Vidyut SurakshaSaathi users',
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',

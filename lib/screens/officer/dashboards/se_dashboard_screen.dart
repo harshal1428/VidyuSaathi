@@ -8,6 +8,7 @@ import '../../../constants/app_colors.dart';
 import 'package:vidyusaathi/widgets/officer/officer_sidebar.dart';
 import '../../common/notifications_screen.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
 
 /// Superintending Engineer Dashboard Screen
 /// Strategic analytics - regional operations, multi-circle tracking, budget oversight
@@ -56,40 +57,59 @@ class _SEDashboardScreenState extends State<SEDashboardScreen> {
               onPressed: () => themeProvider.toggleTheme(),
               tooltip: isDark ? 'Light Mode' : 'Dark Mode',
             ),
-            IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications_outlined),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
+            // Notification Icon
+            Consumer<AuthService>(
+              builder: (context, auth, _) {
+                final user = auth.currentUser;
+                if (user == null) {
+                   return IconButton(
+                     icon: const Icon(Icons.notifications_outlined),
+                     onPressed: () {},
+                   );
+                }
+                return StreamBuilder<int>(
+                  stream: Provider.of<NotificationService>(context).getUnreadCount(user.userId),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return IconButton(
+                      icon: Stack(
+                        children: [
+                          const Icon(Icons.notifications_outlined),
+                          if (count > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  count > 9 ? '9+' : count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: const Text(
-                        '4',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                        );
+                      },
+                    );
+                  }
                 );
               },
             ),
@@ -117,11 +137,6 @@ class _SEDashboardScreenState extends State<SEDashboardScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             child: SEDashboardSection(),
           ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          backgroundColor: isDark ? AppColors.darkSidebarPrimary : const Color(0xFF1976D2),
-          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );

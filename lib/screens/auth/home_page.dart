@@ -33,7 +33,7 @@ class HomePage extends StatelessWidget {
                   children: [
                     // Logo Image
                     Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/mahavitaran_logo.png',
                       height: 120,
                       errorBuilder: (context, error, stackTrace) {
                          return Icon(

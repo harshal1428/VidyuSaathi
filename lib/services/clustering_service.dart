@@ -11,7 +11,7 @@ class ClusteringService {
 
   // Config: Clustering Thresholds
   static const double CLUSTER_RADIUS_METERS = 200.0; // 200m radius
-  static const int TIME_WINDOW_HOURS = 24; // Recent tickets only
+  static const int TIME_WINDOW_HOURS = 24; // Cluster tickets within 24h
 
   /// Main entry point to process a new ticket for clustering
   Future<void> processTicketForClustering(TicketModel ticket) async {
@@ -32,15 +32,13 @@ class ClusteringService {
       double minDistance = double.infinity;
 
       for (var cluster in clusters) {
-        // A. Title Similarity Check (Category + Simple string match)
-        /* 
-           Simple Logic: Same Category or Contains same keywords.
-           Refined: If Cluster Title is "Power Failure" and Ticket is "Power Failure at street 2", match.
-        */
-        if (!_isTitleSimilar(cluster.title, ticket.title, ticket.category)) continue;
+        // A. Title Similarity Check (Title only, NO Category)
+        if (!_isTitleSimilar(cluster.title, ticket.title)) continue;
 
-        // B. Time Window Check (Optional - if cluster is too old but still active, maybe start new?)
-        // Let's assume if it is 'Active', it is valid for matching.
+        // B. Time Window Check
+        // Ensure the ticket is within the time window of the cluster's creation
+        Duration timeDiff = ticket.createdAt.difference(cluster.createdAt).abs();
+        if (timeDiff.inHours > TIME_WINDOW_HOURS) continue;
 
         // C. Distance Check
         double distance = Geolocator.distanceBetween(
@@ -68,27 +66,17 @@ class ClusteringService {
     }
   }
 
-  bool _isTitleSimilar(String clusterTitle, String ticketTitle, String ticketCategory) {
-    // 1. Category Match (Strongest Signal)
-    // If we stored category in cluster, better. For now, assume cluster title represents the 'Main Issue'.
-    
+  bool _isTitleSimilar(String clusterTitle, String ticketTitle) {
     // Normalize
-    String cTitle = clusterTitle.toLowerCase();
-    String tTitle = ticketTitle.toLowerCase();
-    String tCat = ticketCategory.toLowerCase();
+    String cTitle = clusterTitle.toLowerCase().trim();
+    String tTitle = ticketTitle.toLowerCase().trim();
 
-    // If Ticket Category is in Cluster Title (e.g. Cluster: "Power Failure Area X", Category: "Power Failure") => Match
-    if (cTitle.contains(tCat)) return true;
-
-    // If very similar words
+    // 1. Exact Match
     if (cTitle == tTitle) return true;
 
-    // Simple containment
+    // 2. Simple containment
     if (tTitle.contains(cTitle) || cTitle.contains(tTitle)) return true;
     
-    // If ticket has "No Power" and Cluster has "Power Outage" -> needs NLP. 
-    // Fallback: If distance is VERY close (< 50m), assume same issue regardless of title? 
-    // User requirement: "titile" is criterion 1. So we enforced it above.
     return false; 
   }
 
@@ -115,9 +103,8 @@ class ClusteringService {
     
     String id = "CLS-${_uuid.v4().substring(0, 8).toUpperCase()}";
     
-    // Use Ticket Title or Category as Cluster Title
-    // e.g., "Power Failure Cluster - <Timestamp>"
-    String clusterTitle = ticket.category; 
+    // Use Ticket Title as Cluster Title (Explicit user requirement: Not Category)
+    String clusterTitle = ticket.title; 
 
     ComplaintClusterModel newCluster = ComplaintClusterModel(
       clusterId: id,
@@ -159,8 +146,13 @@ class ClusteringService {
         shouldPropagate = true;
       } else if (newStatus == AppConstants.statusInProgress) {
         // Mark Cluster In Progress and siblings
-        clusterStatus = 'In Progress';
-        shouldPropagate = true;
+        // clusterStatus = 'In Progress'; // Updating single ticket shouldn't necessarily update cluster status unless all are in progress, but for simplicity let's keep it sync
+        // shouldPropagate = true;
+      }
+      
+      // Explicitly handle "Resolved" propagation as per user request
+      if (clusterStatus == 'Resolved') {
+         shouldPropagate = true;
       }
 
       if (shouldPropagate) {
@@ -183,14 +175,43 @@ class ClusteringService {
             'updatedAt': FieldValue.serverTimestamp(),
             'resolvedAt': (newStatus == AppConstants.statusResolved) ? FieldValue.serverTimestamp() : null,
           });
-          
-          // Log status change (Optional - skipping for batch limit/simplicity, strict audit needs it)
         }
         await batch.commit();
         print("Synced Cluster ${cluster.clusterId} to $newStatus along with ${cluster.ticketIds.length} tickets.");
+
+        // Notify Siblings
+        if (newStatus == AppConstants.statusResolved) {
+           for (String tid in cluster.ticketIds) {
+             if (tid == ticketId) continue;
+             _notifyCitizenOfResolvedCluster(tid);
+           }
+        }
       }
     } catch (e) {
       print("Error syncing cluster status: $e");
     }
+  }
+
+  Future<void> _notifyCitizenOfResolvedCluster(String ticketId) async {
+     try {
+       final doc = await _firestore.collection('TICKETS').doc(ticketId).get();
+       if (!doc.exists) return;
+       final data = doc.data();
+       final citizenId = data?['citizenId'];
+       if (citizenId != null) {
+          // Direct Notification Write
+          await _firestore.collection('NOTIFICATIONS').add({
+            'title': 'Complaint Resolved',
+            'body': 'Your complaint has been resolved as part of a cluster resolution.',
+            'type': 'ticket_status',
+            'userId': citizenId,
+            'ticketId': ticketId,
+            'isRead': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+       }
+     } catch (e) {
+       print("Failed to notify sibling $ticketId: $e");
+     }
   }
 }

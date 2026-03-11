@@ -69,7 +69,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             children: [
                // Logo
               Image.asset(
-                'assets/images/logo.png',
+                'assets/images/mahavitaran_logo.png',
                 height: 80,
                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_add, size: 60),
               ),

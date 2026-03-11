@@ -10,6 +10,10 @@ import '../pages/officer_active_complaints_screen.dart';
 import '../pages/officer_escalations_screen.dart';
 import '../pages/officer_profile_screen.dart';
 import '../pages/officer_settings_screen.dart';
+import '../../common/notifications_screen.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
+import '../cluster_list_screen.dart';
 
 /// Field Officer Dashboard Screen
 /// Field operations focused - Active complaints, escalations, ticket management
@@ -56,40 +60,62 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
             onPressed: () => themeProvider.toggleTheme(),
             tooltip: isDark ? 'Light Mode' : 'Dark Mode',
           ),
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: const Text(
-                      '3',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+          // Notification Icon
+          Consumer<AuthService>(
+              builder: (context, auth, _) {
+                final user = auth.currentUser;
+                if (user == null) {
+                   return IconButton(
+                     icon: const Icon(Icons.notifications_outlined),
+                     onPressed: () {},
+                   );
+                }
+                return StreamBuilder<int>(
+                  stream: Provider.of<NotificationService>(context).getUnreadCount(user.userId),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return IconButton(
+                      icon: Stack(
+                        children: [
+                          const Icon(Icons.notifications_outlined),
+                          if (count > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  count > 9 ? '9+' : count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                        );
+                      },
+                    );
+                  }
+                );
+              },
             ),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: CircleAvatar(
@@ -168,6 +194,13 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const OfficerEscalationsScreen()),
+            );
+          }, isDark: isDark),
+          _buildDrawerItem(Icons.hub, 'Complaint Clusters', () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ClusterListScreen()),
             );
           }, isDark: isDark),
           Divider(color: isDark ? AppColors.darkBorder : Colors.grey.shade300),

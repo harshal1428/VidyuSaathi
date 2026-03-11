@@ -46,8 +46,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   Future<void> _fetchComplaintTypes() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('COMPLAINT_TYPES').get();
+      final allTypes = snapshot.docs.map((d) => ComplaintTypeModel.fromMap(d.data())).toList();
+      
+      // Deduplicate by title
+      final uniqueTypes = <String, ComplaintTypeModel>{};
+      for (var type in allTypes) {
+        uniqueTypes.putIfAbsent(type.title, () => type);
+      }
+      
       setState(() {
-        _complaintTypes = snapshot.docs.map((d) => ComplaintTypeModel.fromMap(d.data())).toList();
+        _complaintTypes = uniqueTypes.values.toList();
       });
     } catch (e) {
       print("Error fetching complaint types: $e");
@@ -133,16 +141,19 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         String priority = 'Medium';
         String category = 'General';
         int? slaHours;
+        int? slaMinutes;
         
         if (_selectedComplaintType != null && _selectedComplaintType!.title == _titleController.text) {
            priority = _selectedComplaintType!.priority;
            category = _selectedComplaintType!.category;
            
            // Simple SLA parsing
-           if (_selectedComplaintType!.slaResolution.contains('hour')) {
+           if (_selectedComplaintType!.slaResolution.toLowerCase().contains('hour')) {
              slaHours = int.tryParse(_selectedComplaintType!.slaResolution.split(' ')[0]);
+           } else if (_selectedComplaintType!.slaResolution.toLowerCase().contains('min')) {
+             slaMinutes = int.tryParse(_selectedComplaintType!.slaResolution.split(' ')[0]);
            } else {
-             slaHours = 1; 
+             slaHours = 24; 
            }
         } else {
           category = _titleController.text;
@@ -161,6 +172,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           longitude: _currentPosition!.longitude,
           imageUrls: imageUrls,
           slaHours: slaHours,
+          slaMinutes: slaMinutes,
         );
 
         await Provider.of<DatabaseService>(context, listen: false).createTicket(ticket);

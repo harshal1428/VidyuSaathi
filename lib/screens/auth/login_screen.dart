@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                // Logo
               Center(
                 child: Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/mahavitaran_logo.png',
                   height: 100,
                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.electric_bolt, size: 60),
                 ),

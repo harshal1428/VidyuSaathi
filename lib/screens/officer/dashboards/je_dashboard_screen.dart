@@ -14,6 +14,7 @@ import '../pages/officer_settings_screen.dart';
 import '../pages/officer_task_management_screen.dart';
 import '../cluster_list_screen.dart';
 import '../../common/notifications_screen.dart';
+import '../../../services/notification_service.dart';
 
 /// Junior Engineer Dashboard Screen
 /// Field operations focused - SCADA verification, field work tracking, task management
@@ -63,40 +64,59 @@ class _JEDashboardScreenState extends State<JEDashboardScreen> {
               onPressed: () => themeProvider.toggleTheme(),
               tooltip: isDark ? 'Light Mode' : 'Dark Mode',
             ),
-            IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications_outlined),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
+            // Notification Icon
+            Consumer<AuthService>(
+              builder: (context, auth, _) {
+                final user = auth.currentUser;
+                if (user == null) {
+                   return IconButton(
+                     icon: const Icon(Icons.notifications_outlined),
+                     onPressed: () {},
+                   );
+                }
+                return StreamBuilder<int>(
+                  stream: Provider.of<NotificationService>(context).getUnreadCount(user.userId),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return IconButton(
+                      icon: Stack(
+                        children: [
+                          const Icon(Icons.notifications_outlined),
+                          if (count > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  count > 9 ? '9+' : count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: const Text(
-                        '5',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                        );
+                      },
+                    );
+                  }
                 );
               },
             ),
@@ -118,13 +138,6 @@ class _JEDashboardScreenState extends State<JEDashboardScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             child: JEDashboardSection(),
           ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            // TODO: Create new task/ticket
-          },
-          backgroundColor: isDark ? AppColors.darkSidebarPrimary : const Color(0xFF1976D2),
-          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );

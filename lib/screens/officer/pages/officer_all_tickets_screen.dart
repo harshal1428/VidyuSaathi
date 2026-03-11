@@ -28,6 +28,7 @@ class OfficerAllTicketsScreen extends StatefulWidget {
 
 class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
   bool _isMapView = false;
+  String _selectedFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +73,23 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
             tickets = tickets.where(widget.filter!).toList();
           }
 
+          // Apply UI Filters
+          if (_selectedFilter != 'All') {
+            tickets = tickets.where((t) {
+              if (_selectedFilter == 'Pending') {
+                return t.status == 'Created' || t.status == 'Assigned';
+              } else if (_selectedFilter == 'In Progress') {
+                return t.status == 'In Progress';
+              } else if (_selectedFilter == 'Resolved') {
+                 // Labelled as "Solved" in user request, matching "Accepted" or "Resolved"
+                 return t.status == 'Resolved' || t.status == 'Completed'; 
+              } else if (_selectedFilter == 'Rejected') {
+                return t.status == 'Rejected';
+              }
+              return true;
+            }).toList();
+          }
+
           final pendingCount = tickets.where((t) => t.status == 'Created' || t.status == 'Assigned').length;
           final criticalCount = tickets.where((t) => t.priority == 'Critical').length;
           final totalCount = tickets.length;
@@ -89,7 +107,39 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Summary Cards
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'].map((filter) {
+                         final isSelected = _selectedFilter == filter;
+                         return Container(
+                           margin: const EdgeInsets.only(right: 8),
+                           child: ChoiceChip(
+                             label: Text(filter == 'Resolved' ? 'Solved' : filter),
+                             selected: isSelected,
+                             onSelected: (bool selected) {
+                               setState(() {
+                                 _selectedFilter = selected ? filter : 'All';
+                               });
+                             },
+                             selectedColor: Colors.blue.withOpacity(0.2),
+                             backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+                             labelStyle: TextStyle(
+                               color: isSelected ? Colors.blue : (isDark ? Colors.white : Colors.black),
+                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                             ),
+                           ),
+                         );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Summary Cards (Keep logically relevant to filtered view or total view?
+                  // Generally simpler to show stats for the filtered view or keep as overview.
+                  // User didn't specify, but filtering usually affects list. 
+                  // Let's keep summary for *current filtered list* to be dynamic.
                   Row(
                     children: [
                       Expanded(

@@ -259,32 +259,120 @@ class OfficerTicketDetailScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, TicketModel ticket, UserModel user, DatabaseService dbService) {
-      if (ticket.status == AppConstants.statusResolved || ticket.status == AppConstants.statusClosed) {
+      if (ticket.status == AppConstants.statusResolved || ticket.status == AppConstants.statusClosed || ticket.status == 'Rejected') {
+         // If rejected, show reason
+         if (ticket.status == 'Rejected' && ticket.rejectionReason != null) {
+            return Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.red[50],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Ticket Rejected", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text("Reason: ${ticket.rejectionReason}"),
+                ],
+              ),
+            );
+         }
          return const SizedBox.shrink();
       }
 
-      // Simple status flow for demo
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () {
-             // Logic to update status
-             if (ticket.status == AppConstants.statusAssigned) {
-                 dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusInProgress, officerId: user.userId);
-             } else if (ticket.status == AppConstants.statusInProgress) {
-                 dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusResolved, officerId: user.userId);
-             }
-             Navigator.pop(context);
-          },
-          icon: const Icon(Icons.update),
-          label: Text(ticket.status == AppConstants.statusAssigned ? "Start Work" : (ticket.status == AppConstants.statusInProgress ? "Resolve Issue" : "Update Status")),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.white,
+      return Column(
+        children: [
+          // Main Action (Advance Status)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                 // Logic to update status
+                 if (ticket.status == AppConstants.statusAssigned || ticket.status == AppConstants.statusCreated) {
+                     dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusInProgress, officerId: user.userId);
+                 } else if (ticket.status == AppConstants.statusInProgress) {
+                     dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusResolved, officerId: user.userId);
+                 }
+                 Navigator.pop(context);
+              },
+              icon: const Icon(Icons.update),
+              label: Text(ticket.status == AppConstants.statusAssigned || ticket.status == AppConstants.statusCreated ? "Mark In Progress" : (ticket.status == AppConstants.statusInProgress ? "Resolve Issue" : "Update Status")),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          
+          // Reject Action
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showRejectDialog(context, ticket, user, dbService),
+              icon: const Icon(Icons.cancel),
+              label: const Text("Reject Complaint"),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+        ],
       );
+  }
+
+  void _showRejectDialog(BuildContext context, TicketModel ticket, UserModel user, DatabaseService dbService) {
+    final TextEditingController reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reject Complaint"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Please provide a reason for rejecting this complaint. The citizen will be notified."),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: "Rejection Reason",
+                border: OutlineInputBorder(),
+                hintText: "e.g., Fake details, Duplicate, Not in jurisdiction",
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Reason is required")),
+                );
+                return;
+              }
+              dbService.updateTicketStatus(
+                ticket.ticketId, 
+                'Rejected', 
+                officerId: user.userId,
+                rejectionReason: reasonController.text.trim(),
+              );
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Close screen
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text("Reject"),
+          ),
+        ],
+      ),
+    );
   }
 
   Color _getStatusColor(String status) {

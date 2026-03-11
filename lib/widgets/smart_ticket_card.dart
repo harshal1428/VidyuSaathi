@@ -50,7 +50,7 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
     
     // SLA Logic
     // If ticket is resolved, no timer
-    if (widget.ticket.status == 'Resolved' || widget.ticket.status == 'Closed') {
+    if (widget.ticket.status == 'Resolved' || widget.ticket.status == 'Closed' || widget.ticket.status == 'Rejected') {
       _timer?.cancel();
       return;
     }
@@ -166,7 +166,7 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
               const SizedBox(height: 12),
 
               // Timer / Escalation Status
-              if (widget.ticket.status != 'Resolved' && widget.ticket.status != 'Closed')
+              if (widget.ticket.status != 'Resolved' && widget.ticket.status != 'Closed' && widget.ticket.status != 'Rejected')
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -229,6 +229,7 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
       case 'resolved': return Colors.green;
       case 'in progress': return Colors.blue;
       case 'escalated': return Colors.red;
+      case 'rejected': return Colors.red;
       case 'assigned': return Colors.purple;
       default: return Colors.orange;
     }

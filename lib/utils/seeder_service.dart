@@ -35,7 +35,7 @@ class SeederService {
             '10000013', 'Amol Jadhav', 'amol.jadhav@mahavitaran.in', 
             ['10000014', 'Nilesh Pawar', 'nilesh.pawar@mahavitaran.in'],
             admin: '10000015', adminName: 'Admin Shivajinagar', adminEmail: 'admin.shivajinagar@mahavitaran.in',
-            lat: 18.5314, lng: 73.8446),
+            lat: 18.5303, lng: 73.8499), // Updated as per user request (Shivajinagar)
         _OfficeSeed('off_swargate', 'Swargate Office', 
             '10000020', 'Rahul Jagtap', 'rahul.jagtap@mahavitaran.in', 
             '10000021', 'Sandeep More', 'sandeep.more@mahavitaran.in', 
@@ -144,9 +144,12 @@ class SeederService {
 
     // Create Offices and their Staff
     for (var off in offices) {
+      double radius = 15;
+      if (off.name.contains('Shivajinagar')) radius = 3; // Explicit User Rule for Shivajinagar
+
       await _firestore.collection('OFFICES').doc(off.id).set(
         OfficeModel(officeId: off.id, regionId: regionId, name: off.name, 
-            latitude: off.lat, longitude: off.lng, radiusKm: 15).toMap() // Adjusted radius to 15km to avoid overlap but cover city
+            latitude: off.lat, longitude: off.lng, radiusKm: radius).toMap() 
       );
 
       // JE
@@ -196,6 +199,7 @@ class SeederService {
   Future<void> seedComplaintTypes() async {
     print("Seeding Complaint Types with Priority...");
     final List<String> csvLines = [
+"Forest Fire,E (Critical),1 min,2 min",
 "Noise from transformer,A1 (High),1 hour,6 hours",
 "Major blackout in entire colony,E (Critical),15 minutes,2 hours",
 "Loose wire hanging without danger,A3 (Low),12 hours,72 hours",

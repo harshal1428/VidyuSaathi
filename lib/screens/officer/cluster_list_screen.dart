@@ -38,11 +38,11 @@ class _ClusterListScreenState extends State<ClusterListScreen> {
           }
 
           final clusters = snapshot.data!
-              .where((c) => c.ticketCount > 1)
+              .where((c) => c.ticketCount >= 1) // User requested to see clusters even if count is 1
               .toList();
           
           if (clusters.isEmpty) {
-             return const Center(child: Text('No active clusters found (min 2 tickets).'));
+             return const Center(child: Text('No active complaint clusters found.'));
           }
 
           return ListView.builder(

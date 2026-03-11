@@ -9,6 +9,7 @@ import '../../../services/database_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/smart_ticket_card.dart';
 import '../officer_ticket_detail_screen.dart';
+import '../cluster_list_screen.dart';
 
 /// JE (Junior Engineer) Dashboard Section
 /// Connected to Firebase via DatabaseService
@@ -55,6 +56,11 @@ class _JEDashboardSectionState extends State<JEDashboardSection> {
               return _buildFieldOfficersSection(isDark, staff);
             }
           ),
+          const SizedBox(height: 20),
+
+
+          // Complaint Clusters Link
+          _buildClusterOverview(isDark, context),
           const SizedBox(height: 20),
 
           // Active Complaints (Recent)
@@ -614,5 +620,69 @@ class _JEDashboardSectionState extends State<JEDashboardSection> {
   String shortenId(String id) {
     if (id.length > 8) return id.substring(0, 8) + '...';
     return id;
+  }
+
+  Widget _buildClusterOverview(bool isDark, BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+         border: isDark ? Border.all(color: AppColors.darkBorder) : null,
+      ),
+      child: Row(
+        children: [
+           Container(
+             padding: const EdgeInsets.all(12),
+             decoration: BoxDecoration(
+               color: Colors.orange.withOpacity(0.1),
+               shape: BoxShape.circle,
+             ),
+             child: const Icon(Icons.hub, color: Colors.orange, size: 28),
+           ),
+           const SizedBox(width: 16),
+           Expanded(
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+                   'Complaint Clusters',
+                   style: TextStyle(
+                     fontSize: 18,
+                     fontWeight: FontWeight.bold,
+                     color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
+                   ),
+                 ),
+                 const SizedBox(height: 4),
+                 Text(
+                   'View and resolve grouped complaints',
+                   style: TextStyle(
+                     fontSize: 12,
+                     color: isDark ? Colors.grey[400] : Colors.grey[600],
+                   ),
+                 ),
+               ],
+             ),
+           ),
+           TextButton(
+             onPressed: () {
+                Navigator.push(
+                 context,
+                 MaterialPageRoute(builder: (context) => const ClusterListScreen()),
+               );
+             },
+             child: const Text('View All'),
+           )
+        ],
+      ),
+    );
   }
 }

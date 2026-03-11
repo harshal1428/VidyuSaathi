@@ -20,12 +20,14 @@ class TicketModel {
   final String? divisionId;
   
   final int? slaHours;
-  final int escalationLevel;
-  final String generatedVia; // 'App', 'Web', 'Phone'
+  final int? slaMinutes;
   
   // Location
   final double? latitude;
   final double? longitude;
+
+  final int escalationLevel;
+  final String generatedVia; // 'App', 'Web', 'Phone'
 
   final List<String> imageUrls;
   
@@ -33,6 +35,7 @@ class TicketModel {
   final DateTime? updatedAt;
   final DateTime? resolvedAt;
   final DateTime? assignedAt;
+  final String? rejectionReason;
 
   TicketModel({
     required this.ticketId,
@@ -50,6 +53,7 @@ class TicketModel {
     this.circleId,
     this.divisionId,
     this.slaHours,
+    this.slaMinutes,
     this.escalationLevel = 0,
     this.generatedVia = 'App',
     this.latitude,
@@ -59,6 +63,7 @@ class TicketModel {
     this.updatedAt,
     this.resolvedAt,
     this.assignedAt,
+    this.rejectionReason,
   });
 
   Map<String, dynamic> toMap() {
@@ -78,6 +83,7 @@ class TicketModel {
       'circleId': circleId,
       'divisionId': divisionId,
       'slaHours': slaHours,
+      'slaMinutes': slaMinutes,
       'escalationLevel': escalationLevel,
       'generatedVia': generatedVia,
       'latitude': latitude,
@@ -87,6 +93,7 @@ class TicketModel {
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'resolvedAt': resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
       'assignedAt': assignedAt != null ? Timestamp.fromDate(assignedAt!) : null,
+      'rejectionReason': rejectionReason,
     };
   }
 
@@ -107,6 +114,7 @@ class TicketModel {
       circleId: map['circleId'],
       divisionId: map['divisionId'],
       slaHours: map['slaHours'],
+      slaMinutes: map['slaMinutes'],
       escalationLevel: map['escalationLevel'] ?? 0,
       generatedVia: map['generatedVia'] ?? 'App',
       latitude: map['latitude'],
@@ -116,6 +124,7 @@ class TicketModel {
       updatedAt: map['updatedAt'] != null ? (map['updatedAt'] as Timestamp).toDate() : null,
       resolvedAt: map['resolvedAt'] != null ? (map['resolvedAt'] as Timestamp).toDate() : null,
       assignedAt: map['assignedAt'] != null ? (map['assignedAt'] as Timestamp).toDate() : null,
+      rejectionReason: map['rejectionReason'],
     );
   }
 }

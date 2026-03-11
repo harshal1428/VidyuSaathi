@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../core/constants.dart';
+import 'escalation_service.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,12 +18,15 @@ class AuthService extends ChangeNotifier {
   // Initialization Logic
   bool _isInitializing = true;
   bool get isInitializing => _isInitializing;
+  
+  final EscalationService _escalationService = EscalationService();
 
   AuthService() {
     _auth.authStateChanges().listen((User? user) {
       if (user == null) {
         _currentUser = null;
         _isInitializing = false;
+        _escalationService.stopMonitoring(); // Stop on logout
         notifyListeners();
       } else {
         _fetchUser(user.uid);
@@ -35,6 +39,10 @@ class AuthService extends ChangeNotifier {
         DocumentSnapshot doc = await _firestore.collection('USERS').doc(uid).get();
         if (doc.exists) {
           _currentUser = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+          
+          if (_currentUser?.role != AppConstants.roleCitizen) {
+             _escalationService.startMonitoring();
+          }
         }
       } catch (e) {
         print("Error fetching user: $e");
@@ -43,6 +51,7 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
       }
   }
+
 
 
   // Citizen Registration
@@ -170,8 +179,8 @@ class AuthService extends ChangeNotifier {
              // Save to new location
              await _firestore.collection('USERS').doc(cred.user!.uid).set(data);
              
-             // Optional: Delete old doc to prevent duplicate claims? 
-             // await _firestore.collection('USERS').doc(identifier).delete(); 
+             // Delete old doc to prevent duplicate claims and ensure queries find the migrated user (if query uses limit(1))
+             await _firestore.collection('USERS').doc(identifier).delete(); 
              
              _currentUser = UserModel.fromMap(data);
            } else {
@@ -189,6 +198,10 @@ class AuthService extends ChangeNotifier {
          }
       }
       
+      if (_currentUser != null && _currentUser!.role != AppConstants.roleCitizen) {
+          _escalationService.startMonitoring();
+      }
+      
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -198,6 +211,7 @@ class AuthService extends ChangeNotifier {
   Future<void> logout() async {
     await _auth.signOut();
     _currentUser = null;
+    _escalationService.stopMonitoring();
     notifyListeners();
   }
   

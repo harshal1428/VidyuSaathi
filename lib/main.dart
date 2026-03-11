@@ -61,7 +61,7 @@ class VidyuSaathiApp extends StatelessWidget {
         builder: (context, themeProvider, authService, child) {
           return MaterialApp(
             navigatorKey: navigatorKey,
-            title: 'VidyuSaathi',
+            title: 'Vidyut SurakshaSaathi',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,

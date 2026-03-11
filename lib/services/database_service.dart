@@ -86,18 +86,34 @@ class DatabaseService {
 
           // 4. Find JE for this Office to Assign
           // We look for a user with role 'JE' in this office.
+          // Updated to handle variations in role string
+          // 4. Find JE for this Office to Assign
+          // Updated to prioritize migrated accounts (Auth UIDs) over seeded string IDs
           final jeQuery = await _firestore.collection('USERS')
               .where('officeId', isEqualTo: nearestOffice.officeId)
-              .where('role', isEqualTo: 'JE')
-              .limit(1)
+              .where('role', whereIn: ['JE', 'Junior Engineer', 'Junior Engineer (JE)'])
+              .limit(10) // Fetch strictly more to find 'real' account
               .get();
           
           String? assigneeId;
           String? assigneeRole;
           
           if (jeQuery.docs.isNotEmpty) {
-             assigneeId = jeQuery.docs.first['userId'];
+             // Prefer account with Auth UID length (28) over seeded string ID
+             var bestJson = jeQuery.docs.first.data();
+             assigneeId = bestJson['userId'];
              assigneeRole = 'JE';
+
+             for (var doc in jeQuery.docs) {
+               String uid = doc.data()['userId'] ?? '';
+               if (uid.length == 28 && !uid.startsWith('je_') && !uid.startsWith('field_')) {
+                 assigneeId = uid;
+                 print("Geospatial: Found Active Auth Account for JE: $uid");
+                 break;
+               }
+             }
+          } else {
+             print("Geospatial: No JE found in office ${nearestOffice.officeId}. Ticket will be unassigned.");
           }
 
           // 5. Update Ticket Object
@@ -126,6 +142,7 @@ class DatabaseService {
             currentOwnerRole: assigneeRole,
             supervisingJEId: assigneeId,   // JE is the supervisor
             assignedAt: assigneeId != null ? DateTime.now() : null,
+            slaMinutes: ticket.slaMinutes, // Propagate slaMinutes
           );
         }
       } catch (e) {
@@ -153,9 +170,18 @@ class DatabaseService {
     }
     // Notify Officer if assigned immediately
     if (newTicket.currentOwnerId != null) {
+       final now = DateTime.now();
+       // Format: You had received an report "{Title}" on "{Date}" at "{Time}" and "{Complaint Priority/Level}"
+       // Parse standard format or use helper
+       String dateStr = "${now.day}/${now.month}/${now.year}";
+       String timeStr = "${now.hour}:${now.minute.toString().padLeft(2, '0')}";
+       
+       String body = 'You have received a report "${newTicket.title}" on "$dateStr" at "$timeStr" with priority "${newTicket.priority}".';
+       
+       // Force trigger notification
        _notificationService.sendNotification(
         title: 'New Complaint Assignment',
-        body: 'Complaint "${newTicket.title}" received at ${_formatDate(DateTime.now())}.',
+        body: body,
         userId: newTicket.currentOwnerId!,
         type: 'assignment',
         ticketId: newTicket.ticketId,
@@ -323,11 +349,16 @@ class DatabaseService {
     });
   }
 
-  // Recent Tickets
+  // Recent Tickets (Open / Active Only)
   Stream<List<TicketModel>> getRecentTickets(UserModel user, {int limit = 5}) {
     return getOfficerTickets(user).map((tickets) {
-       // getOfficerTickets is already sorted by createdAt descending
-       return tickets.take(limit).toList();
+       // Filter Active: Exclude Resolved, Closed, Rejected
+       final activeTickets = tickets.where((t) => 
+          t.status != 'Resolved' && 
+          t.status != 'Closed' && 
+          t.status != 'Rejected'
+       ).toList();
+       return activeTickets.take(limit).toList();
     });
   }
 
@@ -386,7 +417,7 @@ class DatabaseService {
   }
   
   // Update Ticket Status
-  Future<void> updateTicketStatus(String ticketId, String newStatus, {String? officerId}) async {
+  Future<void> updateTicketStatus(String ticketId, String newStatus, {String? officerId, String? rejectionReason}) async {
     Map<String, dynamic> updates = {
       'status': newStatus,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -397,6 +428,11 @@ class DatabaseService {
       updates['escalationLevel'] = 0; // De-escalate upon resolution
     } else if (newStatus == 'Closed') {
       updates['escalationLevel'] = 0;
+    } else if (newStatus == 'Rejected') {
+      updates['escalationLevel'] = 0;
+      if (rejectionReason != null) {
+        updates['rejectionReason'] = rejectionReason;
+      }
     }
 
     await _firestore.collection('TICKETS').doc(ticketId).update(updates);
@@ -407,6 +443,7 @@ class DatabaseService {
       'status': newStatus,
       'changedBy': officerId,
       'timestamp': FieldValue.serverTimestamp(),
+      'note': rejectionReason,
     });
 
     // NOTIFICATIONS
@@ -417,16 +454,25 @@ class DatabaseService {
         final data = ticketDoc.data()!;
         final citizenId = data['citizenId'];
         final currentOwnerId = data['currentOwnerId'];
+        final title = data['title'] ?? 'Complaint';
 
         // 1. Notify Citizen
         if (citizenId != null) {
           String notifTitle = 'Ticket Updated';
-          if (newStatus == 'In Progress') notifTitle = 'Complaint In Progress';
-          else if (newStatus == 'Resolved') notifTitle = 'Complaint Resolved';
+          String notifBody = 'Your complaint ${ticketId} is now $newStatus.';
+
+          if (newStatus == 'In Progress') {
+             notifTitle = 'Complaint In Progress';
+          } else if (newStatus == 'Resolved') {
+             notifTitle = 'Complaint Resolved';
+          } else if (newStatus == 'Rejected') {
+             notifTitle = 'Complaint Rejected';
+             notifBody = 'Your complaint "$title" has been rejected.\nReason: ${rejectionReason ?? "Invalid Details"}';
+          }
           
           await _notificationService.sendNotification(
             title: notifTitle,
-            body: 'Your complaint ${ticketId} is now $newStatus.',
+            body: notifBody,
             userId: citizenId,
             type: 'ticket_status',
             ticketId: ticketId,
@@ -477,9 +523,9 @@ class DatabaseService {
   // Get Clusters for Officer (Filtered by Jurisdiction)
   Future<List<ComplaintClusterModel>> getClustersForOfficer(UserModel user) async {
     try {
-      // 1. Fetch recent active clusters
+      // 1. Fetch recent active clusters (Active OR In Progress)
       final snapshot = await _firestore.collection('CLUSTERS')
-          .where('status', isEqualTo: 'Active')
+          .where('status', whereIn: ['Active', 'In Progress'])
           .orderBy('lastUpdatedAt', descending: true)
           .limit(50)
           .get();
@@ -487,8 +533,7 @@ class DatabaseService {
       final allClusters = snapshot.docs.map((d) => ComplaintClusterModel.fromMap(d.data() as Map<String, dynamic>)).toList();
       final List<ComplaintClusterModel> validClusters = [];
 
-      // 2. Filter by Jurisdiction (Expensive check: Fetch 1 ticket per cluster)
-      // Optimization: Batch fetch the 'representative' tickets (first ticketId of each cluster)
+      // 2. Filter by Jurisdiction (Strict - restored as per user request)
       if (allClusters.isEmpty) return [];
 
       List<String> representativeTicketIds = allClusters
@@ -525,25 +570,25 @@ class DatabaseService {
          } else if (desig.contains('CHIEF') || role == 'CE') {
              // CE -> Region + Escalated
              if (repTicket.regionId == user.regionId) {
-                isValid = repTicket.escalationLevel > 0;
+                isValid = true; // Show all in region for now, or filter escalated if preferred
              }
          } else if (desig.contains('SUPERINTEND') || role == 'SE') {
              // SE -> Circle + Escalated
              if (repTicket.circleId == user.circleId) {
-                isValid = repTicket.escalationLevel > 0;
+                isValid = true;
              }
          } else if (desig.contains('EXECUTIVE') && !desig.contains('DEPUTY') || role == 'EE') {
              // EE -> Division + Escalated
              if (repTicket.divisionId == user.divisionId) {
-                isValid = repTicket.escalationLevel > 0;
+                isValid = true;
              }
          } else if (desig.contains('DEPUTY') || role == 'DYEE' || desig.contains('DE') || role == 'DE') {
-             // DyEE -> Division + Escalated
+             // DyEE -> Division/Region subset
              if (repTicket.divisionId == user.divisionId || (repTicket.divisionId == null && repTicket.officeId == user.officeId)) {
-                isValid = repTicket.escalationLevel > 0;
+                isValid = true;
              }
          } else {
-             // JE/AE/Field -> Office (Show ALL, not just escalated)
+             // JE/AE/Field -> Office Strict
              isValid = (repTicket.officeId == user.officeId);
          }
 

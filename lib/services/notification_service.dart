@@ -46,4 +46,14 @@ class NotificationService extends ChangeNotifier {
   Future<void> markAsRead(String notificationId) async {
     await _firestore.collection('NOTIFICATIONS').doc(notificationId).update({'isRead': true});
   }
+
+  // Get Unread Count
+  Stream<int> getUnreadCount(String userId) {
+    return _firestore
+        .collection('NOTIFICATIONS')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
 }
