@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/app_logo.png" alt="VidyuSaathi Logo" width="140"/>
+  <img src="assets/images/mahavitaran_logo.png" alt="VidyuSaathi Logo" width="140"/>
 </p>
 
 <h1 align="center">⚡ VidyuSaathi — Vidyut SurakshaSaathi</h1>
@@ -30,7 +30,6 @@
 - [Hierarchical Officer Structure](#hierarchical-officer-structure)
 - [Automatic Escalation Engine](#automatic-escalation-engine)
 - [Intelligent Complaint Clustering](#intelligent-complaint-clustering)
-- [SLA (Service Level Agreement) Engine](#sla-service-level-agreement-engine)
 - [Notification System](#notification-system)
 - [Geospatial Auto-Assignment](#geospatial-auto-assignment)
 - [Complaint Type Database & Auto-Suggest](#complaint-type-database--auto-suggest)
@@ -742,7 +741,4 @@ A fully working prototype of the application can be found here:
 🔗 https://drive.google.com/drive/folders/1-wjGwO5nt8eVJydXeorrEk3lz_PbRq4v
 
 ---
-
-<p align="center">
-  <b>Built with ❤️ for Mahavitran (MSEDCL) — Powering Maharashtra, One Complaint at a Time ⚡</b>
 </p>
