@@ -6,10 +6,12 @@ import '../../screens/Officer/pages/officer_reports_screen.dart';
 import '../../screens/Officer/pages/officer_profile_screen.dart';
 import '../../screens/Officer/pages/officer_settings_screen.dart';
 import 'package:civic_core/constants/app_colors.dart';
+import 'package:civic_core/chatbot/ui/chatbot_launcher.dart';
 
 class OfficerSidebar extends StatelessWidget {
   final String userName;
   final String userRole;
+  final String officerUserId;
   final String teamLabel;
   final bool isDark;
   final VoidCallback onLogout;
@@ -18,6 +20,7 @@ class OfficerSidebar extends StatelessWidget {
     Key? key,
     required this.userName,
     required this.userRole,
+    required this.officerUserId,
     this.teamLabel = 'Team', // Default value
     required this.isDark,
     required this.onLogout,
@@ -101,6 +104,16 @@ class OfficerSidebar extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => const ClusterListScreen()),
               );
+            },
+            isDark: isDark,
+          ),
+          _buildDrawerItem(
+            context,
+            Icons.smart_toy_outlined,
+            'Chat Assistant',
+            () {
+              Navigator.pop(context);
+              openOfficerChatbot(context, officerUserId);
             },
             isDark: isDark,
           ),

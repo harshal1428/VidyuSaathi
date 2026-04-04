@@ -39,6 +39,8 @@ class _AEDashboardScreenState extends State<AEDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.userId ?? '';
     final isDark = themeProvider.isDarkMode;
 
     return PopScope(
@@ -125,6 +127,7 @@ class _AEDashboardScreenState extends State<AEDashboardScreen> {
         drawer: OfficerSidebar(
           userName: widget.userName,
           userRole: 'Assistant Engineer',
+          officerUserId: currentUserId,
           teamLabel: 'JE/FE Team',
           isDark: isDark,
           onLogout: () => _showLogoutConfirmation(isDark),

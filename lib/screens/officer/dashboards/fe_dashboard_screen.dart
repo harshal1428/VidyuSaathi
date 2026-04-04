@@ -15,6 +15,7 @@ import '../../common/notifications_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/notification_service.dart';
 import '../cluster_list_screen.dart';
+import '../../../chatbot/ui/chatbot_launcher.dart';
 
 /// Field Officer Dashboard Screen
 /// Field operations focused - Active complaints, escalations, ticket management
@@ -45,6 +46,8 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.userId ?? '';
     final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
@@ -126,7 +129,7 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
           ),
         ],
       ),
-      drawer: _buildSidebar(isDark),
+      drawer: _buildSidebar(isDark, currentUserId),
       body: RefreshIndicator(
         onRefresh: () async {
           await Future.delayed(const Duration(seconds: 1));
@@ -146,7 +149,7 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
     );
   }
 
-  Widget _buildSidebar(bool isDark) {
+  Widget _buildSidebar(bool isDark, String currentUserId) {
     return Drawer(
       backgroundColor: isDark ? AppColors.darkSidebar : Colors.white,
       child: ListView(
@@ -210,6 +213,10 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
               context,
               MaterialPageRoute(builder: (context) => const ClusterListScreen()),
             );
+          }, isDark: isDark),
+          _buildDrawerItem(Icons.smart_toy_outlined, 'Chat Assistant', () {
+            Navigator.pop(context);
+            openOfficerChatbot(context, currentUserId);
           }, isDark: isDark),
           Divider(color: isDark ? AppColors.darkBorder : Colors.grey.shade300),
           _buildDrawerItem(Icons.person, 'Profile', () {

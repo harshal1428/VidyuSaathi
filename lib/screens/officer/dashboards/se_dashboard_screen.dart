@@ -39,6 +39,8 @@ class _SEDashboardScreenState extends State<SEDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.userId ?? '';
     final isDark = themeProvider.isDarkMode;
 
     return PopScope(
@@ -125,6 +127,7 @@ class _SEDashboardScreenState extends State<SEDashboardScreen> {
         drawer: OfficerSidebar(
           userName: widget.userName,
           userRole: 'Superintending Engineer',
+          officerUserId: currentUserId,
           teamLabel: 'EE Team',
           isDark: isDark,
           onLogout: () => _showLogoutConfirmation(isDark),

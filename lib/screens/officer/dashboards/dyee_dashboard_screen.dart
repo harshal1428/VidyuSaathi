@@ -39,6 +39,8 @@ class _DyEEDashboardScreenState extends State<DyEEDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.userId ?? '';
     final isDark = themeProvider.isDarkMode;
 
     return PopScope(
@@ -125,6 +127,7 @@ class _DyEEDashboardScreenState extends State<DyEEDashboardScreen> {
         drawer: OfficerSidebar(
           userName: widget.userName,
           userRole: 'Deputy Executive Engineer',
+          officerUserId: currentUserId,
           teamLabel: 'AE Team',
           isDark: isDark,
           onLogout: () => _showLogoutConfirmation(isDark),
