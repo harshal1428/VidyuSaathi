@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mahavitran_app/presentation/constants/app_colors.dart';
-import 'package:mahavitran_app/presentation/provider/admin/theme_provider.dart';
+import 'package:civic_core/presentation/constants/app_colors.dart';
+import 'package:civic_core/presentation/provider/admin/theme_provider.dart';
 
-import 'package:mahavitran_app/presentation/screens/Officer/pages/officer_notifications_screen.dart';
-import 'package:mahavitran_app/presentation/screens/Officer/pages/officer_help_screen.dart';
+import 'package:civic_core/presentation/screens/Officer/pages/officer_notifications_screen.dart';
+import 'package:civic_core/presentation/screens/Officer/pages/officer_help_screen.dart';
 
 class OfficerSettingsScreen extends StatelessWidget {
   const OfficerSettingsScreen({Key? key}) : super(key: key);

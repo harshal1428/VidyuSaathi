@@ -1,0 +1,61 @@
+category,subtype,priority,sla_hours,keywords,synonyms
+Garbage,Garbage not collected,High,12,garbage not collected,waste not picked|trash not collected
+Garbage,Overflowing garbage bin,High,8,overflowing bin,full dustbin|bin full
+Garbage,Garbage pile on road,High,8,garbage pile,trash heap|waste pile
+Garbage,Illegal dumping,High,6,illegal dumping,unauthorized waste
+Garbage,Bad smell from garbage,Medium,24,bad smell garbage,foul smell waste
+Garbage,Mosquitoes due to garbage,High,12,mosquito garbage,insects from waste
+Garbage,Construction waste dump,High,12,construction waste,debris dump
+Garbage,Street not cleaned,Medium,24,street not cleaned,road not swept
+Water,Water leakage pipe,High,6,water leakage,pipe leak|water seeping
+Water,Pipe burst,Critical,2,pipe burst,major leak|pipeline broken
+Water,No water supply,High,12,no water supply,water not coming
+Water,Low water pressure,Medium,24,low pressure,slow water flow
+Water,Contaminated water,Critical,4,dirty water,muddy water|smelly water
+Water,Overflowing tank,Medium,12,tank overflow,water overflow tank
+Water,Water logging,High,6,water logging,stagnant water
+Water,Illegal water connection,Medium,24,illegal connection,water theft
+Roads,Pothole on road,High,12,pothole,road hole|crater
+Roads,Multiple potholes,High,8,many potholes,road full holes
+Roads,Road surface broken,High,12,road broken,damaged road
+Roads,Road caved in,Critical,4,road collapse,sinkhole
+Roads,Footpath broken,Medium,24,broken footpath,damaged walkway
+Roads,Open manhole,Critical,2,open manhole,manhole open
+Roads,Road digging not restored,High,12,road digging,construction not fixed
+Roads,Debris on road,Medium,24,road debris,stones on road
+Streetlight,Streetlight not working,High,12,light not working,streetlight off
+Streetlight,Multiple lights not working,High,8,many lights off,area dark
+Streetlight,Flickering light,Medium,24,flickering light,blinking light
+Streetlight,Dim streetlight,Medium,24,low light,poor lighting
+Streetlight,Broken pole,Critical,4,broken pole,fallen pole
+Streetlight,Hanging wires,Critical,2,hanging wire,electric risk
+Streetlight,Loose connection,High,8,loose wire,connection issue
+Streetlight,Dark area,High,12,dark street,no lighting area
+Drainage,Choked drain,High,8,choked drain,blocked drain
+Drainage,Open drain,High,12,open drain,exposed drainage
+Drainage,Sewage overflow,Critical,4,sewage overflow,drain overflow
+Drainage,Drain blockage due to garbage,High,8,drain blocked garbage,garbage clog drain
+Drainage,Water stagnation,High,6,stagnant water,water accumulation
+Drainage,Drain cover missing,Critical,2,drain cover missing,open drain hole
+Drainage,Drain smell,Medium,24,drain smell,bad odor drain
+Safety,Open manhole hazard,Critical,2,open manhole,danger hole
+Safety,Hanging electric wire,Critical,2,hanging wire,electric risk
+Safety,Construction hazard,Critical,4,construction unsafe,no barricade
+Safety,Exposed cables,Critical,2,exposed wire,electric cable open
+Safety,Fire hazard,Critical,2,fire risk,flammable danger
+Encroachment,Illegal street encroachment,Medium,48,encroachment,illegal structure
+Encroachment,Footpath blocked,Medium,48,footpath blocked,walking path blocked
+Encroachment,Construction material on road,Medium,48,construction material,road blocked materials
+Encroachment,Illegal parking blockage,Medium,48,illegal parking,vehicle blockage
+Infrastructure,Public toilet dirty,Medium,24,toilet dirty,unclean toilet
+Infrastructure,Public toilet not working,High,12,toilet not working,facility broken
+Infrastructure,Broken bench,Low,48,bench broken,seat damaged
+Infrastructure,Bus stop damaged,Medium,24,bus stop broken,damaged shelter
+Infrastructure,Public tap not working,Medium,24,public tap issue,tap broken
+Animals,Stray dogs,Medium,24,stray dogs,street dogs
+Animals,Stray cattle,Medium,24,stray cattle,loose cows
+Animals,Dead animal removal,High,8,dead animal,carcass removal
+Governance,Complaint not resolved,High,12,not resolved,no action taken
+Governance,Wrongly closed complaint,High,12,wrong closure,closed incorrectly
+Governance,Poor quality repair,Medium,24,poor repair,bad work quality
+Governance,Repeated issue,High,12,repeated problem,issue again

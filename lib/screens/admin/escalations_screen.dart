@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 
 class EscalationsScreen extends StatelessWidget {
   const EscalationsScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final dbService = Provider.of<DatabaseService>(context);
+    final user = authService.currentUser;
+
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent, // Hosted in dashboard scaffold
       body: Padding(
@@ -21,16 +32,14 @@ class EscalationsScreen extends StatelessWidget {
              ),
              const SizedBox(height: 16),
              Expanded(
-               child: StreamBuilder<QuerySnapshot>(
-                 stream: FirebaseFirestore.instance.collection('ESCALATION_LOGS')
-                     .orderBy('timestamp', descending: true)
-                     .snapshots(),
+               child: StreamBuilder<List<Map<String, dynamic>>>(
+                 stream: dbService.getEscalationLogsForAdmin(user),
                  builder: (context, snapshot) {
                    if (snapshot.connectionState == ConnectionState.waiting) {
                      return const Center(child: CircularProgressIndicator());
                    }
                    
-                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                      return Center(
                        child: Column(
                          mainAxisAlignment: MainAxisAlignment.center,
@@ -45,12 +54,12 @@ class EscalationsScreen extends StatelessWidget {
                      );
                    }
 
-                   final logs = snapshot.data!.docs;
+                   final logs = snapshot.data!;
 
                    return ListView.builder(
                      itemCount: logs.length,
                      itemBuilder: (context, index) {
-                       final log = logs[index].data() as Map<String, dynamic>;
+                       final log = logs[index];
                        final ticketId = log['ticketId'] ?? 'Unknown';
                        final fromUser = log['fromUser'] ?? 'System';
                        final toUser = log['toUser'] ?? 'Unknown';

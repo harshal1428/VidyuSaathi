@@ -11,7 +11,9 @@ class StaffManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).currentUser;
     // Determine if we should scope to office.
-    final bool isOfficeAdmin = (user?.role == 'OFFICE_ADMIN' || user?.designation == 'Admin');
+    final role = (user?.role ?? '').toUpperCase();
+    final designation = (user?.designation ?? '').toUpperCase();
+    final bool isOfficeAdmin = (role == 'OFFICE_ADMIN' || designation == 'ADMIN');
     final String? officeId = user?.officeId;
 
     Query query = FirebaseFirestore.instance.collection('USERS').where('role', isNotEqualTo: 'CITIZEN');
@@ -157,70 +159,100 @@ class StaffManagementScreen extends StatelessWidget {
     final _nameController = TextEditingController();
     final _emailController = TextEditingController();
     final _phoneController = TextEditingController();
+    String selectedRole = 'FE';
+    String selectedDesignation = 'Field Officer';
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add Field Officer"),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              const Text("Role: Field Officer", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-              Text("Office ID: $officeId", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Office Staff'),
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(labelText: 'Phone'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: const InputDecoration(labelText: 'Role'),
+                  items: const [
+                    DropdownMenuItem(value: 'FE', child: Text('Field Engineer (FE)')),
+                    DropdownMenuItem(value: 'JE', child: Text('Junior Engineer (JE)')),
+                    DropdownMenuItem(value: 'AE', child: Text('Assistant Engineer (AE)')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() {
+                      selectedRole = value;
+                      if (value == 'JE') {
+                        selectedDesignation = 'Junior Engineer';
+                      } else if (value == 'AE') {
+                        selectedDesignation = 'Assistant Engineer';
+                      } else {
+                        selectedDesignation = 'Field Officer';
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text('Office ID: $officeId', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                try {
-                  // Create User in Firestore (using email as ID for simplicity or auto-id)
-                  // In real app, Auth Registration should happen here. 
-                  // For prototype, we just add to USERS collection.
-                  final newUserId = DateTime.now().millisecondsSinceEpoch.toString();
-                  await FirebaseFirestore.instance.collection('USERS').doc(newUserId).set({
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (_formKey.currentState!.validate()) {
+                  try {
+                    final officeDoc = await FirebaseFirestore.instance.collection('OFFICES').doc(officeId).get();
+                    final officeData = officeDoc.data() ?? <String, dynamic>{};
+
+                    final newUserId = DateTime.now().millisecondsSinceEpoch.toString();
+                    await FirebaseFirestore.instance.collection('USERS').doc(newUserId).set({
                       'userId': newUserId,
                       'name': _nameController.text.trim(),
                       'email': _emailController.text.trim(),
                       'phone': _phoneController.text.trim(),
-                      'role': 'Field Engineer',
-                      'designation': 'Field Officer',
+                      'role': selectedRole,
+                      'designation': selectedDesignation,
                       'officeId': officeId,
-                      'divisionId': 'zone_pune', // Inherit from admin ideally, defaulting for proto
+                      'regionId': officeData['regionId'],
+                      'circleId': officeData['circleId'],
+                      'divisionId': officeData['divisionId'],
+                      'departmentId': officeData['departmentId'],
                       'isActive': true,
                       'createdAt': FieldValue.serverTimestamp(),
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Staff Added Successfully")));
-                } catch (e) {
-                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                    });
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Staff added successfully')));
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 }
-              }
-            },
-            child: const Text("Add"),
-          )
-        ],
-      )
+              },
+              child: const Text('Add'),
+            )
+          ],
+        ),
+      ),
     );
   }
 }

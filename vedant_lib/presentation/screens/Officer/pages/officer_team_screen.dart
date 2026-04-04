@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mahavitran_app/presentation/constants/app_colors.dart';
-import 'package:mahavitran_app/domain/models/admin/staff_member.dart';
-import 'package:mahavitran_app/data/services/admin/mock_data_service.dart';
-import 'package:mahavitran_app/presentation/widgets/admin/common/status_badge.dart'; // Reusing admin widget for consistency
+import 'package:civic_core/presentation/constants/app_colors.dart';
+import 'package:civic_core/domain/models/admin/staff_member.dart';
+import 'package:civic_core/data/services/admin/mock_data_service.dart';
+import 'package:civic_core/presentation/widgets/admin/common/status_badge.dart'; // Reusing admin widget for consistency
 import 'officer_profile_screen.dart'; // Placeholder for viewing staff profile
 
 class OfficerTeamScreen extends StatefulWidget {

@@ -1,39 +1,47 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ComplaintTypeModel {
-  final String title;
-  final String category; // e.g. A1 (High)
-  final String priority; // e.g. High
-  final String slaResponse;
-  final String slaResolution;
+  final String id;
+  final String category;
+  final String subtype;
+  final String priority;
+  final int slaHours;
+  final List<String> keywords;
+  final List<String> synonyms;
+  final String departmentId;
 
   ComplaintTypeModel({
-    required this.title,
+    required this.id,
     required this.category,
+    required this.subtype,
     required this.priority,
-    required this.slaResponse,
-    required this.slaResolution,
+    required this.slaHours,
+    required this.keywords,
+    required this.synonyms,
+    required this.departmentId,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'title': title,
+      'id': id,
       'category': category,
+      'subtype': subtype,
       'priority': priority,
-      'slaResponse': slaResponse,
-      'slaResolution': slaResolution,
+      'slaHours': slaHours,
+      'keywords': keywords,
+      'synonyms': synonyms,
+      'departmentId': departmentId,
     };
   }
-  
+
   factory ComplaintTypeModel.fromMap(Map<String, dynamic> map) {
     return ComplaintTypeModel(
-      title: map['title'] ?? '',
+      id: map['id'] ?? '',
       category: map['category'] ?? '',
+      subtype: map['subtype'] ?? '',
       priority: map['priority'] ?? 'Medium',
-      slaResponse: map['slaResponse'] ?? '',
-      slaResolution: map['slaResolution'] ?? '',
+      slaHours: map['slaHours'] ?? 0,
+      keywords: List<String>.from(map['keywords'] ?? []),
+      synonyms: List<String>.from(map['synonyms'] ?? []),
+      departmentId: map['departmentId'] ?? '',
     );
   }
 }
-
-

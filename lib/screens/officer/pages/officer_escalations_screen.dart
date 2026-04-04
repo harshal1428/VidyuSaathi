@@ -10,6 +10,10 @@ class OfficerEscalationsScreen extends OfficerAllTicketsScreen {
   );
   
   static bool _isCriticalOrEscalated(TicketModel t) {
-    return t.priority.toLowerCase() == 'critical' || t.status.toLowerCase() == 'escalated' || t.escalationLevel > 0;
+    final isClosed = t.status.toLowerCase() == 'resolved' ||
+        t.status.toLowerCase() == 'closed' ||
+        t.status.toLowerCase() == 'rejected';
+    final isEscalatedNow = t.status.toLowerCase() == 'escalated' || t.escalationLevel > 0;
+    return t.priority.toLowerCase() == 'critical' || (!isClosed && isEscalatedNow);
   }
 }

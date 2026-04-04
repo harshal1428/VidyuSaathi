@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/ticket_model.dart';
 import '../../constants/app_colors.dart';
 
@@ -25,6 +25,43 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
   Duration _timeLeft = Duration.zero;
   bool _isEscalated = false;
 
+  Future<String?> _resolveOwnerDisplayName(String? ownerId) async {
+    if (ownerId == null || ownerId.trim().isEmpty) return null;
+    final normalized = ownerId.trim();
+
+    final byDoc = await FirebaseFirestore.instance.collection('USERS').doc(normalized).get();
+    if (byDoc.exists) {
+      final data = byDoc.data();
+      final name = data?['name']?.toString();
+      final designation = data?['designation']?.toString();
+      if (name != null && name.isNotEmpty) {
+        if (designation != null && designation.isNotEmpty) {
+          return '$name ($designation)';
+        }
+        return name;
+      }
+    }
+
+    final byUserId = await FirebaseFirestore.instance
+        .collection('USERS')
+        .where('userId', isEqualTo: normalized)
+        .limit(1)
+        .get();
+    if (byUserId.docs.isNotEmpty) {
+      final data = byUserId.docs.first.data();
+      final name = data['name']?.toString();
+      final designation = data['designation']?.toString();
+      if (name != null && name.isNotEmpty) {
+        if (designation != null && designation.isNotEmpty) {
+          return '$name ($designation)';
+        }
+        return name;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +71,12 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
   @override
   void didUpdateWidget(covariant SmartTicketCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.ticket.ticketId != widget.ticket.ticketId) {
+    if (oldWidget.ticket.ticketId != widget.ticket.ticketId ||
+        oldWidget.ticket.status != widget.ticket.status ||
+        oldWidget.ticket.assignedAt != widget.ticket.assignedAt ||
+        oldWidget.ticket.slaHours != widget.ticket.slaHours ||
+        oldWidget.ticket.slaMinutes != widget.ticket.slaMinutes ||
+        oldWidget.ticket.adjustedSlaHours != widget.ticket.adjustedSlaHours) {
        _startTimer();
     }
   }
@@ -55,17 +97,20 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
       return;
     }
 
-    if (widget.ticket.assignedAt == null) {
-      // Default to created at if not assigned yet (rare but possible)
-      return; 
-    }
+    final startAt = widget.ticket.assignedAt ?? widget.ticket.createdAt;
 
     // Determine SLA duration based on current owner role (simplified for UI)
     // Should ideally match EscalationService logic
-    int slaHours = widget.ticket.slaHours ?? 24;
-    // Or dynamic based on role if needed
+    final int slaMinutes;
+    if (widget.ticket.slaMinutes != null && widget.ticket.slaMinutes! > 0) {
+      slaMinutes = widget.ticket.slaMinutes!;
+    } else if (widget.ticket.adjustedSlaHours > 0) {
+      slaMinutes = widget.ticket.adjustedSlaHours * 60;
+    } else {
+      slaMinutes = (widget.ticket.slaHours ?? 24) * 60;
+    }
     
-    final deadline = widget.ticket.assignedAt!.add(Duration(hours: slaHours));
+    final deadline = startAt.add(Duration(minutes: slaMinutes));
     final now = DateTime.now();
     
     if (now.isAfter(deadline)) {
@@ -197,10 +242,20 @@ class _SmartTicketCardState extends State<SmartTicketCard> {
                   ),
                 ),
               
-               if (widget.ticket.currentOwnerRole != null && widget.ticket.status != 'Resolved')
+               if ((widget.ticket.currentOwnerId != null || widget.ticket.currentOwnerRole != null) &&
+                   widget.ticket.status != 'Resolved')
                  Padding(
                    padding: const EdgeInsets.only(top: 8.0),
-                   child: Text("Current Owner: ${widget.ticket.currentOwnerRole}", style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic)),
+                   child: FutureBuilder<String?>(
+                     future: _resolveOwnerDisplayName(widget.ticket.currentOwnerId),
+                     builder: (context, snapshot) {
+                       final ownerLabel = snapshot.data ?? widget.ticket.currentOwnerRole ?? 'Unassigned';
+                       return Text(
+                         "Current Owner: $ownerLabel",
+                         style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                       );
+                     },
+                   ),
                  ),
             ],
           ),

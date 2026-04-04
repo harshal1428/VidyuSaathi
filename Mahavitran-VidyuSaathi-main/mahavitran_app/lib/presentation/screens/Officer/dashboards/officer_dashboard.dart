@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mahavitran_app/presentation/screens/Officer/pages/officer_notifications_screen.dart';
-import 'package:mahavitran_app/presentation/widgets/admin/common/status_badge.dart';
+import 'package:civic_core/presentation/screens/Officer/pages/officer_notifications_screen.dart';
+import 'package:civic_core/presentation/widgets/admin/common/status_badge.dart';
 
 /// Officer Dashboard Template
 /// Abstract base class for all officer role dashboards

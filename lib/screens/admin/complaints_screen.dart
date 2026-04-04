@@ -47,9 +47,12 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
     final user = Provider.of<AuthService>(context).currentUser;
 
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return StreamBuilder<List<TicketModel>>(
-      // Use getAllTickets explicitly for Admin to ensure no filtering
-      stream: dbService.getAllTickets(), 
+      stream: dbService.getTicketsForAdmin(user),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -419,8 +422,9 @@ class ComplaintDetailsModal extends StatelessWidget {
                                 label: const Text('Start'),
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                                 onPressed: () {
+                                  final changedBy = Provider.of<AuthService>(context, listen: false).currentUser?.userId ?? 'ADMIN';
                                   // Simplified database update via provider
-                                  Provider.of<DatabaseService>(context, listen: false).updateTicketStatus(ticket.ticketId, 'In Progress', officerId: 'ADMIN');
+                                  Provider.of<DatabaseService>(context, listen: false).updateTicketStatus(ticket.ticketId, 'In Progress', officerId: changedBy);
                                   Navigator.pop(context);
                                 },
                               ),
@@ -432,7 +436,8 @@ class ComplaintDetailsModal extends StatelessWidget {
                               label: const Text('Resolve'),
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                               onPressed: () {
-                                Provider.of<DatabaseService>(context, listen: false).updateTicketStatus(ticket.ticketId, 'Resolved', officerId: 'ADMIN');
+                                final changedBy = Provider.of<AuthService>(context, listen: false).currentUser?.userId ?? 'ADMIN';
+                                Provider.of<DatabaseService>(context, listen: false).updateTicketStatus(ticket.ticketId, 'Resolved', officerId: changedBy);
                                 Navigator.pop(context);
                               },
                             ),

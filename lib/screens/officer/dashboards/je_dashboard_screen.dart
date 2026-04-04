@@ -194,7 +194,7 @@ class _JEDashboardScreenState extends State<JEDashboardScreen> {
               MaterialPageRoute(builder: (context) => const OfficerTaskManagementScreen()),
             );
           }, isDark: isDark),
-          _buildDrawerItem(Icons.analytics, 'Reports', () {
+          _buildDrawerItem(Icons.analytics, 'Reports & Heatmap', () {
             Navigator.pop(context);
             Navigator.push(
               context,

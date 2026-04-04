@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mahavitran_app/presentation/constants/app_colors.dart';
-import 'package:mahavitran_app/domain/models/admin/complaint.dart';
-import 'package:mahavitran_app/data/services/admin/mock_data_service.dart';
+import 'package:civic_core/presentation/constants/app_colors.dart';
+import 'package:civic_core/domain/models/admin/complaint.dart';
+import 'package:civic_core/data/services/admin/mock_data_service.dart';
 
 class OfficerAllTicketsScreen extends StatefulWidget {
   const OfficerAllTicketsScreen({Key? key}) : super(key: key);

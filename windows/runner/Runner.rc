@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.mahavitran.vidyusaathi" "\0"
-            VALUE "FileDescription", "vidyusaathi" "\0"
+            VALUE "FileDescription", "NagarSetu" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "vidyusaathi" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.mahavitran.vidyusaathi. All rights reserved." "\0"
             VALUE "OriginalFilename", "vidyusaathi.exe" "\0"
-            VALUE "ProductName", "vidyusaathi" "\0"
+            VALUE "ProductName", "NagarSetu" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

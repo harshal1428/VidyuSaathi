@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import 'package:flutter/foundation.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -15,7 +16,7 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // Mahavitran Section
+              // Pune Municipal Corporation Section
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -33,7 +34,7 @@ class HomePage extends StatelessWidget {
                   children: [
                     // Logo Image
                     Image.asset(
-                      'assets/images/mahavitaran_logo.png',
+                      'assets/images/civic.png',
                       height: 120,
                       errorBuilder: (context, error, stackTrace) {
                          return Icon(
@@ -87,16 +88,17 @@ class HomePage extends StatelessWidget {
               ),
               
               // Seed Data Button (Hidden/Dev feature)
-              Align(
-                alignment: Alignment.center,
-                child: TextButton(
-                  onPressed: () {
-                     // TODO: Trigger seeder
-                     Navigator.pushNamed(context, '/seeder');
-                  },
-                  child: const Text('Dev: Seed Data', style: TextStyle(color: Colors.grey, fontSize: 10)),
+              if (kDebugMode)
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                       // TODO: Trigger seeder
+                       Navigator.pushNamed(context, '/seeder');
+                    },
+                    child: const Text('Dev: Seed Data', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                  ),
                 ),
-              ),
               
               const SizedBox(height: 20),
             ],

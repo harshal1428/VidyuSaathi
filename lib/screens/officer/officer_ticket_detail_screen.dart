@@ -1,12 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/ticket_model.dart';
 import '../../models/user_model.dart';
-import '../../constants/app_colors.dart';
 import '../../services/database_service.dart';
 import '../../services/auth_service.dart';
 import '../../core/constants.dart';
@@ -21,6 +23,8 @@ class OfficerTicketDetailScreen extends StatelessWidget {
     // Helper to format date
     String formatDate(DateTime dt) => DateFormat('dd MMM yyyy, hh:mm a').format(dt);
     final hasLocation = ticket.latitude != null && ticket.longitude != null;
+    final isPendingOrNew = ticket.status == AppConstants.statusCreated ||
+      ticket.status == AppConstants.statusAssigned;
     final dbService = Provider.of<DatabaseService>(context, listen: false);
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
 
@@ -77,7 +81,7 @@ class OfficerTicketDetailScreen extends StatelessWidget {
                       children: [
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.vidyusaathi.app',
+                          userAgentPackageName: 'com.civiccore.app',
                         ),
                         MarkerLayer(
                           markers: [
@@ -145,6 +149,130 @@ class OfficerTicketDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  if (isPendingOrNew) ...[
+                    const Text(
+                      "Previously Solved Nearby/Similar Complaints",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    FutureBuilder<List<TicketModel>>(
+                      future: dbService.getPreviouslySolvedComplaints(sourceTicket: ticket, limit: 8),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Could not load historical resolved complaints.',
+                              style: TextStyle(color: Colors.orange.shade800),
+                            ),
+                          );
+                        }
+
+                        final solved = snapshot.data ?? [];
+                        if (solved.isEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('No similar resolved complaints found for this location/title.'),
+                          );
+                        }
+
+                        return Column(
+                          children: solved.map((resolvedTicket) {
+                            final resolvedOn = resolvedTicket.resolvedAt ?? resolvedTicket.createdAt;
+                            final distanceText = _buildDistanceText(ticket, resolvedTicket);
+                            final hasProofImage = resolvedTicket.resolutionImageUrls.isNotEmpty;
+                            final hasProofText = resolvedTicket.resolutionDescription != null &&
+                                resolvedTicket.resolutionDescription!.trim().isNotEmpty;
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => OfficerTicketDetailScreen(ticket: resolvedTicket),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.history_toggle_off, color: Colors.green),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              resolvedTicket.title,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                          const Icon(Icons.chevron_right),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        '${resolvedTicket.category} • Resolved ${formatDate(resolvedOn)}${distanceText.isEmpty ? '' : ' • $distanceText'}',
+                                        style: TextStyle(color: Colors.grey.shade700),
+                                      ),
+                                      if (hasProofText) ...[
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Earlier Officer Resolution:',
+                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          resolvedTicket.resolutionDescription!,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                      if (hasProofImage) ...[
+                                        const SizedBox(height: 8),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            resolvedTicket.resolutionImageUrls.first,
+                                            height: 120,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
                   // Metadata
                   Row(
                     children: [
@@ -167,12 +295,12 @@ class OfficerTicketDetailScreen extends StatelessWidget {
                   // Images - VITAL for checking fake complaints
                   const Text("Attached Images (Evidence)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  if (ticket.imageUrls != null && ticket.imageUrls!.isNotEmpty)
+                  if (ticket.imageUrls.isNotEmpty)
                     SizedBox(
                       height: 200, // Larger for officer to see details
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: ticket.imageUrls!.length,
+                        itemCount: ticket.imageUrls.length,
                         itemBuilder: (context, index) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 12),
@@ -181,14 +309,14 @@ class OfficerTicketDetailScreen extends StatelessWidget {
                                  // Fullscreen view logic could go here
                                  showDialog(
                                    context: context,
-                                   builder: (ctx) => Dialog(child: Image.network(ticket.imageUrls![index])),
+                                   builder: (ctx) => Dialog(child: Image.network(ticket.imageUrls[index])),
                                  );
                               },
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Stack(
                                   children: [
-                                     Image.network(ticket.imageUrls![index], height: 200, width: 200, fit: BoxFit.cover),
+                                     Image.network(ticket.imageUrls[index], height: 200, width: 200, fit: BoxFit.cover),
                                      Positioned(bottom: 0, left: 0, right: 0, child: Container(color: Colors.black54, padding: const EdgeInsets.all(4), child: const Text("Tap to Enlarge", style: TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center)))
                                   ],
                                 ),
@@ -289,12 +417,13 @@ class OfficerTicketDetailScreen extends StatelessWidget {
                  if (ticket.status == AppConstants.statusAssigned || ticket.status == AppConstants.statusCreated) {
                      dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusInProgress, officerId: user.userId);
                  } else if (ticket.status == AppConstants.statusInProgress) {
-                     dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusResolved, officerId: user.userId);
+                   _showResolutionSubmissionDialog(context, ticket, user, dbService);
+                   return;
                  }
                  Navigator.pop(context);
               },
               icon: const Icon(Icons.update),
-              label: Text(ticket.status == AppConstants.statusAssigned || ticket.status == AppConstants.statusCreated ? "Mark In Progress" : (ticket.status == AppConstants.statusInProgress ? "Resolve Issue" : "Update Status")),
+                label: Text(ticket.status == AppConstants.statusAssigned || ticket.status == AppConstants.statusCreated ? "Mark In Progress" : (ticket.status == AppConstants.statusInProgress ? "Submit Resolution Proof" : "Update Status")),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Theme.of(context).primaryColor,
@@ -320,6 +449,223 @@ class OfficerTicketDetailScreen extends StatelessWidget {
           ),
         ],
       );
+  }
+
+  String _buildDistanceText(TicketModel source, TicketModel candidate) {
+    if (source.latitude == null ||
+        source.longitude == null ||
+        candidate.latitude == null ||
+        candidate.longitude == null) {
+      return '';
+    }
+
+    final distanceKm = const Distance().as(
+      LengthUnit.Kilometer,
+      LatLng(source.latitude!, source.longitude!),
+      LatLng(candidate.latitude!, candidate.longitude!),
+    );
+
+    if (distanceKm < 1) {
+      return '${(distanceKm * 1000).round()} m away';
+    }
+    return '${distanceKm.toStringAsFixed(2)} km away';
+  }
+
+  Future<List<String>> _uploadResolutionImages(String ticketId, List<XFile> images) async {
+    final List<String> uploaded = [];
+    for (int i = 0; i < images.length; i++) {
+      final x = images[i];
+      final ext = x.path.contains('.') ? x.path.split('.').last : 'jpg';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('resolution_images')
+          .child(ticketId)
+          .child(fileName);
+      await ref.putFile(File(x.path));
+      uploaded.add(await ref.getDownloadURL());
+    }
+    return uploaded;
+  }
+
+  void _showResolutionSubmissionDialog(
+    BuildContext context,
+    TicketModel ticket,
+    UserModel user,
+    DatabaseService dbService,
+  ) {
+    final descriptionController = TextEditingController();
+    final picker = ImagePicker();
+    final List<XFile> selectedImages = [];
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: !isSubmitting,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            Future<void> pickImage(ImageSource source) async {
+              final x = await picker.pickImage(
+                source: source,
+                imageQuality: 65,
+                maxWidth: 1600,
+                maxHeight: 1600,
+              );
+              if (x != null) {
+                setDialogState(() => selectedImages.add(x));
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Submit Resolution Proof'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Add what work was completed and upload solved-site image(s). Citizen will be notified with this proof.'),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descriptionController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Resolution Description',
+                        hintText: 'Example: Replaced damaged cable and restored streetlight connection.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: isSubmitting ? null : () => pickImage(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('Camera'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: isSubmitting ? null : () => pickImage(ImageSource.gallery),
+                            icon: const Icon(Icons.photo_library),
+                            label: const Text('Gallery'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (selectedImages.isEmpty)
+                      const Text('No solved image selected yet.')
+                    else
+                      SizedBox(
+                        height: 88,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: List.generate(selectedImages.length, (i) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        File(selectedImages[i].path),
+                                        width: 88,
+                                        height: 88,
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 176,
+                                        cacheHeight: 176,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: GestureDetector(
+                                        onTap: isSubmitting
+                                            ? null
+                                            : () => setDialogState(() => selectedImages.removeAt(i)),
+                                        child: Container(
+                                          color: Colors.black54,
+                                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final description = descriptionController.text.trim();
+                          if (description.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Resolution description is required.')),
+                            );
+                            return;
+                          }
+                          if (selectedImages.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Upload at least one solved image.')),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final imageUrls = await _uploadResolutionImages(ticket.ticketId, selectedImages);
+                            await dbService.submitResolutionForVerification(
+                              ticketId: ticket.ticketId,
+                              officerId: user.userId,
+                              resolutionDescription: description,
+                              resolutionImageUrls: imageUrls,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(dialogContext);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Work marked resolved and citizen notified with proof.')),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to submit proof: $e')),
+                              );
+                            }
+                            setDialogState(() => isSubmitting = false);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showRejectDialog(BuildContext context, TicketModel ticket, UserModel user, DatabaseService dbService) {

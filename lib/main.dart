@@ -41,11 +41,11 @@ void main() async {
   // Initialize Local Notifications
   await LocalNotificationService.initialize();
   
-  runApp(const VidyuSaathiApp());
+  runApp(const CivicCoreApp());
 }
 
-class VidyuSaathiApp extends StatelessWidget {
-  const VidyuSaathiApp({super.key});
+class CivicCoreApp extends StatelessWidget {
+  const CivicCoreApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +61,7 @@ class VidyuSaathiApp extends StatelessWidget {
         builder: (context, themeProvider, authService, child) {
           return MaterialApp(
             navigatorKey: navigatorKey,
-            title: 'Vidyut SurakshaSaathi',
+            title: 'CivicCore',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,

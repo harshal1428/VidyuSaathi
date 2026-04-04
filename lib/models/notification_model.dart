@@ -6,6 +6,7 @@ class NotificationModel {
   final String body;
   final String type; // 'ticket_status', 'assignment', 'escalation'
   final String userId; // Target user
+  final String? recipientEmail;
   final String? ticketId;
   final bool isRead;
   final DateTime createdAt;
@@ -16,6 +17,7 @@ class NotificationModel {
     required this.body,
     required this.type,
     required this.userId,
+    this.recipientEmail,
     this.ticketId,
     required this.isRead,
     required this.createdAt,
@@ -28,6 +30,7 @@ class NotificationModel {
       'body': body,
       'type': type,
       'userId': userId,
+      'recipientEmail': recipientEmail,
       'ticketId': ticketId,
       'isRead': isRead,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -41,6 +44,7 @@ class NotificationModel {
       body: map['body'] ?? '',
       type: map['type'] ?? 'general',
       userId: map['userId'] ?? '',
+      recipientEmail: map['recipientEmail'],
       ticketId: map['ticketId'],
       isRead: map['isRead'] ?? false,
       createdAt: (map['createdAt'] as Timestamp).toDate(),

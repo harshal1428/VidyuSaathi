@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vidyusaathi/constants/app_colors.dart';
-import 'package:vidyusaathi/models/ticket_model.dart';
-import 'package:vidyusaathi/services/auth_service.dart';
-import 'package:vidyusaathi/services/database_service.dart';
-import 'package:vidyusaathi/widgets/smart_ticket_card.dart';
+import 'package:civic_core/constants/app_colors.dart';
+import 'package:civic_core/models/ticket_model.dart';
+import 'package:civic_core/services/auth_service.dart';
+import 'package:civic_core/services/database_service.dart';
+import 'package:civic_core/widgets/smart_ticket_card.dart';
 import '../officer_ticket_detail_screen.dart';
 
 class OfficerTaskManagementScreen extends StatelessWidget {

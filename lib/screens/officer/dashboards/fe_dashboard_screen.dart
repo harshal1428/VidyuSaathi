@@ -8,6 +8,7 @@ import '../../../constants/app_colors.dart';
 import '../pages/officer_all_tickets_screen.dart';
 import '../pages/officer_active_complaints_screen.dart';
 import '../pages/officer_escalations_screen.dart';
+import '../pages/officer_reports_screen.dart';
 import '../pages/officer_profile_screen.dart';
 import '../pages/officer_settings_screen.dart';
 import '../../common/notifications_screen.dart';
@@ -194,6 +195,13 @@ class _FEDashboardScreenState extends State<FEDashboardScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const OfficerEscalationsScreen()),
+            );
+          }, isDark: isDark),
+          _buildDrawerItem(Icons.analytics, 'Reports & Heatmap', () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const OfficerReportsScreen()),
             );
           }, isDark: isDark),
           _buildDrawerItem(Icons.hub, 'Complaint Clusters', () {

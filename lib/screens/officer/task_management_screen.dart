@@ -9,6 +9,31 @@ import 'officer_ticket_detail_screen.dart';
 class TaskManagementScreen extends StatelessWidget {
   const TaskManagementScreen({super.key});
 
+  List<TicketModel> _filterTicketsForType(List<TicketModel> tickets, String type) {
+    switch (type) {
+      case 'pending':
+        return tickets
+            .where((t) =>
+                t.status == AppConstants.statusCreated ||
+                t.status == AppConstants.statusAssigned)
+            .toList();
+      case 'in_progress':
+        return tickets
+            .where((t) =>
+                t.status == AppConstants.statusInProgress ||
+                t.status == AppConstants.statusSupervisorReview)
+            .toList();
+      case 'completed':
+        return tickets
+            .where((t) =>
+                t.status == AppConstants.statusResolved ||
+                t.status == AppConstants.statusClosed)
+            .toList();
+      default:
+        return tickets;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
@@ -18,42 +43,47 @@ class TaskManagementScreen extends StatelessWidget {
     final dbService = Provider.of<DatabaseService>(context);
 
     String title = 'Tasks';
-    String? statusFilter;
+    Stream<List<TicketModel>>? stream;
 
     switch (type) {
       case 'pending':
         title = 'Pending Tasks';
-        statusFilter = AppConstants.statusAssigned; // Or Created if they pick from pool
+        break;
+      case 'escalated':
+        title = 'Escalated';
+        stream = dbService.getOpenEscalatedTickets(user!);
         break;
       case 'in_progress':
         title = 'In Progress';
-        statusFilter = AppConstants.statusInProgress;
         break;
       case 'completed':
-        title = 'Completed';
-        statusFilter = AppConstants.statusCompleted;
+        title = 'Resolved';
         break;
       case 'my_tasks':
       default:
         title = 'My Tasks';
-        statusFilter = null; // All assigned to me
         break;
     }
+
+    stream ??= dbService.getOfficerTickets(user!);
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: StreamBuilder<List<TicketModel>>(
-        stream: dbService.getOfficerTickets(user!, status: statusFilter),
+        stream: stream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          final sourceTickets = snapshot.data ?? [];
+          final tickets = type == 'escalated'
+              ? sourceTickets
+              : _filterTicketsForType(sourceTickets, type);
           
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (tickets.isEmpty) {
             return const Center(child: Text('No tasks found'));
           }
-          
-          final tickets = snapshot.data!;
           
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -138,26 +168,28 @@ class _TicketCard extends StatelessWidget {
       ));
     } else if (ticket.status == AppConstants.statusInProgress) {
       buttons.add(ElevatedButton(
-        onPressed: () => dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusCompleted, officerId: user!.userId),
-        child: const Text('Mark Completed'),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => OfficerTicketDetailScreen(ticket: ticket)),
+          );
+        },
+        child: const Text('Upload Proof & Submit'),
       ));
     } else if (ticket.status == AppConstants.statusCompleted) {
-      // Supervisor Review logic usually happens here, but if this is the officer view
-      // they might wait. Or if they are the supervisor.
-      // Assuming self-resolution for now or supervisor action.
-      // Let's assume the officer marks it Resolved if they have authority, or it goes to Supervisor Review.
-      // Prompt says: Completed -> Supervisor Review -> Resolved
       buttons.add(ElevatedButton(
-        onPressed: () => dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusSupervisorReview, officerId: user!.userId),
-        child: const Text('Submit for Review'),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => OfficerTicketDetailScreen(ticket: ticket)),
+          );
+        },
+        child: const Text('Open Details'),
       ));
     } else if (ticket.status == AppConstants.statusSupervisorReview) {
-      // If current user is supervisor (logic needed), they can Resolve.
-      // For now, enabling Resolve for demo.
-      buttons.add(ElevatedButton(
-        onPressed: () => dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusResolved, officerId: user!.userId),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-        child: const Text('Approve & Resolve'),
+      buttons.add(OutlinedButton(
+        onPressed: null,
+        child: const Text('Awaiting Citizen Verification'),
       ));
     }
 

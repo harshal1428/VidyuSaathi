@@ -95,7 +95,7 @@ class _ClusterDetailScreenState extends State<ClusterDetailScreen> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.vidyusaathi.app',
+                  userAgentPackageName: 'com.civiccore.app',
                 ),
                 MarkerLayer(
                   markers: [

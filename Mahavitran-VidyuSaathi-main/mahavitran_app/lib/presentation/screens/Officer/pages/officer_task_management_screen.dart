@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mahavitran_app/presentation/constants/app_colors.dart';
+import 'package:civic_core/presentation/constants/app_colors.dart';
 
 class OfficerTaskManagementScreen extends StatelessWidget {
   const OfficerTaskManagementScreen({Key? key}) : super(key: key);

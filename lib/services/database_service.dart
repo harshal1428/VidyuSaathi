@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/ticket_model.dart';
@@ -9,23 +10,94 @@ import '../models/structure_models.dart';
 import '../core/constants.dart';
 import 'clustering_service.dart';
 import 'notification_service.dart';
+import 'escalation_service.dart';
+import 'nlp_classification_service.dart';
 
 class DatabaseService {
+  static const String DEPARTMENTS = 'DEPARTMENTS';
+  static const String COMPLAINT_TYPES = 'COMPLAINT_TYPES';
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
   final ClusteringService _clusteringService = ClusteringService();
   final NotificationService _notificationService = NotificationService();
 
+  bool _isOfficeAdminUser(UserModel user) {
+    final role = user.role.toUpperCase();
+    final designation = user.designation.toUpperCase();
+    return role == 'OFFICE_ADMIN' || designation == 'ADMIN';
+  }
+
+  bool _isOpenEscalatedTicket(TicketModel t) {
+    final isClosed = t.status == AppConstants.statusResolved ||
+        t.status == AppConstants.statusClosed ||
+        t.status == 'Rejected';
+    final escalatedNow = t.status == 'Escalated' || t.escalationLevel > 0;
+    return !isClosed && escalatedNow;
+  }
+
+  Future<String?> _resolveUserEmail(String? userId) async {
+    if (userId == null || userId.trim().isEmpty) return null;
+    final normalized = userId.trim();
+
+    final byDoc = await _firestore.collection('USERS').doc(normalized).get();
+    if (byDoc.exists) {
+      final email = byDoc.data()?['email']?.toString();
+      if (email != null && email.isNotEmpty) return email;
+    }
+
+    final byUserId = await _firestore
+        .collection('USERS')
+        .where('userId', isEqualTo: normalized)
+        .limit(1)
+        .get();
+    if (byUserId.docs.isNotEmpty) {
+      final email = byUserId.docs.first.data()['email']?.toString();
+      if (email != null && email.isNotEmpty) return email;
+    }
+    return null;
+  }
+
   // Create Ticket
-  Future<void> createTicket(TicketModel ticket) async {
+  Future<void> createTicket(TicketModel ticket, NlpResult nlpResult) async {
     TicketModel newTicket = ticket;
-    
-    // Geospatial Assignment Logic
+    String? previousTicketId;
+    int clusterSize = 1;
+    String clusterId = '';
+
+    // Step 2 & 3
+    if (ticket.latitude != null && ticket.longitude != null) {
+      previousTicketId = await _clusteringService.checkRecurrence(
+          ticket.latitude!, ticket.longitude!, nlpResult.departmentId);
+
+      Map<String, dynamic> pt = ticket.toMap();
+      pt['departmentId'] = nlpResult.departmentId;
+      pt['title'] = nlpResult.title;
+      pt['ticketId'] = ticket.ticketId;
+      var cRes = await _clusteringService.checkAndCluster(pt);
+      clusterSize = cRes['clusterSize'] ?? 1;
+      clusterId = cRes['clusterId'] ?? '';
+    }
+
+    // Step 4
+    bool isRecurrence = previousTicketId != null;
+    int escalationStartLevel = _clusteringService.getEscalationStartLevel(clusterSize, isRecurrence);
+    int adjustedSlaHours = (nlpResult.slaHours * _clusteringService.getSlaReductionFactor(clusterSize)).round();
+
+    String? assigneeId;
+    String? assigneeRole;
+    String? officeId;
+    String? regionId;
+    String? circleId;
+    String? divisionId;
+
     if (ticket.latitude != null && ticket.longitude != null) {
       try {
-        // 1. Fetch all offices (Optimization: In a real app, use GeoFlutterFire or similar)
-        // Since we have < 100 offices, fetching all is acceptable for this prototype.
-        final officeSnaps = await _firestore.collection('OFFICES').get();
+        // Step 5: geospatial logic WITH department filter
+        final officeSnaps = await _firestore.collection('OFFICES')
+              .where('departmentId', isEqualTo: nlpResult.departmentId)
+              .get();
+              
         final offices = officeSnaps.docs.map((doc) => OfficeModel(
           officeId: doc['officeId'],
           regionId: doc['regionId'],
@@ -37,45 +109,23 @@ class DatabaseService {
 
         OfficeModel? nearestOffice;
         double minDistance = double.infinity;
-
-        // 2. Find nearest office
         for (var office in offices) {
           double distanceMeters = Geolocator.distanceBetween(
-            ticket.latitude!, 
-            ticket.longitude!, 
-            office.latitude, 
-            office.longitude
+            ticket.latitude!, ticket.longitude!, office.latitude, office.longitude
           );
-          
-          // Track absolute nearest for fallback
           if (distanceMeters < minDistance) {
             minDistance = distanceMeters;
             nearestOffice = office;
           }
         }
-        
-        // LOGIC: If we found ANY office, nearestOffice will be set to the absolute closest.
-        // We accept this even if > radius, as we MUST assign to someone.
-        if (nearestOffice != null) {
-           double radiusMeters = nearestOffice.radiusKm * 1000;
-           String matchType = minDistance <= radiusMeters ? "Within Radius" : "Fallback (Nearest)";
-           
-           print("Geospatial Assignment: $matchType. Assigned to ${nearestOffice.name} (Dist: ${(minDistance/1000).toStringAsFixed(2)} km)");
-        }
 
         if (nearestOffice != null) {
-          print("Geospatial Match: Assigned to Office ${nearestOffice.name} (${nearestOffice.officeId})");
+          officeId = nearestOffice.officeId;
+          regionId = nearestOffice.regionId;
           
-          // 3. Fetch Hierarchy Details
-          String? regionId = nearestOffice.regionId;
-          String? circleId;
-          String? divisionId;
-
-          // Fetch Region to get Circle
           final regionSnap = await _firestore.collection('REGIONS').doc(regionId).get();
           if (regionSnap.exists) {
-            circleId = regionSnap.data()?['circleId'];
-             // Fetch Circle to get Division
+             circleId = regionSnap.data()?['circleId'];
              if (circleId != null) {
                 final circleSnap = await _firestore.collection('CIRCLES').doc(circleId).get();
                 if (circleSnap.exists) {
@@ -83,125 +133,144 @@ class DatabaseService {
                 }
              }
           }
-
-          // 4. Find JE for this Office to Assign
-          // We look for a user with role 'JE' in this office.
-          // Updated to handle variations in role string
-          // 4. Find JE for this Office to Assign
-          // Updated to prioritize migrated accounts (Auth UIDs) over seeded string IDs
-          final jeQuery = await _firestore.collection('USERS')
-              .where('officeId', isEqualTo: nearestOffice.officeId)
-              .where('role', whereIn: ['JE', 'Junior Engineer', 'Junior Engineer (JE)'])
-              .limit(10) // Fetch strictly more to find 'real' account
-              .get();
           
-          String? assigneeId;
-          String? assigneeRole;
+          // Step 6: Find Officer at L{escalationStartLevel}
+          final hier = await EscalationService.getDeptHierarchy(nlpResult.departmentId);
+          var node = hier.firstWhere((h) => h['level'] == escalationStartLevel, orElse: () => hier.isNotEmpty ? hier.first : {'role': 'JE'});
+          String targetRole = node['role'];
           
-          if (jeQuery.docs.isNotEmpty) {
-             // Prefer account with Auth UID length (28) over seeded string ID
-             var bestJson = jeQuery.docs.first.data();
-             assigneeId = bestJson['userId'];
-             assigneeRole = 'JE';
+          Query q = _firestore.collection('USERS').where('role', isEqualTo: targetRole).limit(10);
+          if (escalationStartLevel <= 3) {
+             q = q.where('officeId', isEqualTo: officeId);
+          } else if (escalationStartLevel <= 5) {
+             q = q.where('regionId', isEqualTo: regionId);
+          } else if (escalationStartLevel == 6) {
+             q = q.where('circleId', isEqualTo: circleId);
+          } else {
+             q = q.where('divisionId', isEqualTo: divisionId ?? 'zone_pune');
+          }
+          
+          final officerQuery = await q.get();
+          if (officerQuery.docs.isNotEmpty) {
+             for (var doc in officerQuery.docs) {
+               final data = doc.data() as Map<String, dynamic>;
+               final docId = doc.id;
+               String uid = data['userId'] ?? '';
 
-             for (var doc in jeQuery.docs) {
-               String uid = doc.data()['userId'] ?? '';
+               if (docId.length == 28) {
+                 assigneeId = docId;
+                 assigneeRole = targetRole;
+                 break;
+               }
+
                if (uid.length == 28 && !uid.startsWith('je_') && !uid.startsWith('field_')) {
                  assigneeId = uid;
-                 print("Geospatial: Found Active Auth Account for JE: $uid");
+                 assigneeRole = targetRole;
                  break;
                }
              }
-          } else {
-             print("Geospatial: No JE found in office ${nearestOffice.officeId}. Ticket will be unassigned.");
+
+             assigneeId ??= officerQuery.docs.first.id;
+             assigneeRole ??= targetRole;
           }
-
-          // 5. Update Ticket Object
-          newTicket = TicketModel(
-            ticketId: ticket.ticketId,
-            title: ticket.title,
-            description: ticket.description,
-            category: ticket.category,
-            priority: ticket.priority,
-            status: assigneeId != null ? AppConstants.statusAssigned : AppConstants.statusCreated,
-            citizenId: ticket.citizenId,
-            createdAt: ticket.createdAt,
-            latitude: ticket.latitude,
-            longitude: ticket.longitude,
-            imageUrls: ticket.imageUrls,
-            slaHours: ticket.slaHours,
-            escalationLevel: ticket.escalationLevel,
-            generatedVia: ticket.generatedVia,
-            
-            // Assigned Fields
-            officeId: nearestOffice.officeId,
-            regionId: regionId,
-            circleId: circleId,
-            divisionId: divisionId,
-            currentOwnerId: assigneeId,    // Assign to JE
-            currentOwnerRole: assigneeRole,
-            supervisingJEId: assigneeId,   // JE is the supervisor
-            assignedAt: assigneeId != null ? DateTime.now() : null,
-            slaMinutes: ticket.slaMinutes, // Propagate slaMinutes
-          );
         }
-      } catch (e) {
-        print("Error during geospatial assignment: $e");
-        // Fallback: Proceed with creating ticket without assignment
+      } catch(e) {
+        print("Geo Error: $e");
       }
     }
 
+    // Step 7: Build ticket document
+    newTicket = TicketModel(
+      ticketId: ticket.ticketId,
+      title: nlpResult.title,
+      description: ticket.description,
+      category: nlpResult.category,
+      priority: nlpResult.priority,
+      status: assigneeId != null ? AppConstants.statusAssigned : AppConstants.statusCreated,
+      citizenId: ticket.citizenId,
+      createdAt: ticket.createdAt,
+      latitude: ticket.latitude,
+      longitude: ticket.longitude,
+      imageUrls: ticket.imageUrls,
+      slaHours: nlpResult.slaHours,
+      escalationLevel: nlpResult.isCriticalOverride ? 3 : escalationStartLevel,
+      generatedVia: ticket.generatedVia,
+      
+      officeId: officeId,
+      regionId: regionId,
+      circleId: circleId,
+      divisionId: divisionId,
+      currentOwnerId: assigneeId,
+      currentOwnerRole: assigneeRole,
+      supervisingJEId: assigneeId,
+      assignedAt: assigneeId != null ? DateTime.now() : null,
+      slaMinutes: ticket.slaMinutes,
+      
+      departmentId: nlpResult.departmentId,
+      rawInputText: ticket.description, // The raw input text
+      nlpClassification: nlpResult.toMap(),
+      escalationStartLevel: escalationStartLevel,
+      adjustedSlaHours: adjustedSlaHours,
+      isRecurrence: isRecurrence,
+      previousTicketId: previousTicketId ?? '',
+      linkedTicketIds: [],
+    );
+
+    // Step 8: Write to Firestore
     await _firestore.collection('TICKETS').doc(newTicket.ticketId).set(newTicket.toMap());
-    
-    // Trigger Clustering (Async - Fire and Forget)
-    if (newTicket.latitude != null && newTicket.longitude != null) {
-       _clusteringService.processTicketForClustering(newTicket);
-    }
-    
-    // Notify Citizen of Creation
+
     if (newTicket.citizenId.isNotEmpty) {
-      _notificationService.sendNotification(
+      await _notificationService.sendNotification(
         title: 'Complaint Registered',
-        body: 'Your complaint about ${newTicket.category} has been received and assigned to the concerned office on ${_formatDate(DateTime.now())}.',
+        body: 'Your complaint about ${newTicket.category} has been received.',
         userId: newTicket.citizenId,
-        type: 'ticket_status',
-        ticketId: newTicket.ticketId,
-      );
-    }
-    // Notify Officer if assigned immediately
-    if (newTicket.currentOwnerId != null) {
-       final now = DateTime.now();
-       // Format: You had received an report "{Title}" on "{Date}" at "{Time}" and "{Complaint Priority/Level}"
-       // Parse standard format or use helper
-       String dateStr = "${now.day}/${now.month}/${now.year}";
-       String timeStr = "${now.hour}:${now.minute.toString().padLeft(2, '0')}";
-       
-       String body = 'You have received a report "${newTicket.title}" on "$dateStr" at "$timeStr" with priority "${newTicket.priority}".';
-       
-       // Force trigger notification
-       _notificationService.sendNotification(
-        title: 'New Complaint Assignment',
-        body: body,
-        userId: newTicket.currentOwnerId!,
-        type: 'assignment',
+        recipientEmail: null,
+        type: 'ticket_create',
         ticketId: newTicket.ticketId,
       );
     }
     
-    // Notify Admins (System Admins)
-    try {
-      final adminSnaps = await _firestore.collection('USERS').where('role', isEqualTo: AppConstants.roleAdmin).get();
-      for (var doc in adminSnaps.docs) {
-         _notificationService.sendNotification(
-          title: 'New Complaint Logged',
-          body: 'Complaint "${newTicket.title}" logged by citizen at ${_formatDate(DateTime.now())}.',
-          userId: doc.id,
-          type: 'admin_alert',
-          ticketId: newTicket.ticketId,
-        );
-      }
-    } catch (e) {
-      print("Error notifying admins: $e");
+    // Step 9: Call NotificationService to notify assigned officer
+    if (assigneeId != null) {
+      final assigneeEmail = await _resolveUserEmail(assigneeId);
+      await _notificationService.sendNotification(
+        title: 'New Assignment',
+        body: 'A new ${newTicket.priority} priority ticket has been assigned to you.',
+        userId: assigneeId,
+        recipientEmail: assigneeEmail,
+        type: 'ticket_assignment',
+        ticketId: newTicket.ticketId,
+      );
+    }
+    
+    // Step 10: If isRecurrence: also notify the L3+ officer of the office
+    if (isRecurrence && officeId != null && escalationStartLevel < 3) {
+       try {
+         final hier = await EscalationService.getDeptHierarchy(nlpResult.departmentId);
+         var nodeL3 = hier.firstWhere((h) => h['level'] == 3, orElse: () => {'role': 'DyEE'});
+         final qL3 = await _firestore.collection('USERS')
+             .where('role', isEqualTo: nodeL3['role'])
+             .where('officeId', isEqualTo: officeId)
+             .limit(1)
+             .get();
+             
+         if (qL3.docs.isNotEmpty) {
+           final first = qL3.docs.first;
+           final data = first.data() as Map<String, dynamic>;
+           String uidL3 = first.id.length == 28 ? first.id : (data['userId'] ?? first.id);
+           final l3Email = await _resolveUserEmail(uidL3);
+             await _notificationService.sendNotification(
+                title: 'Recurring Issue Alert',
+                body: 'A recurring issue was just reported in your jurisdiction.',
+                userId: uidL3,
+                recipientEmail: l3Email,
+                type: 'escalation_alert',
+                ticketId: newTicket.ticketId,
+             );
+         }
+       } catch (e) {
+         print("Failed L3 recurrence notification: $e");
+       }
     }
   }
 
@@ -228,6 +297,81 @@ class DatabaseService {
       tickets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return tickets;
     });
+  }
+
+  Stream<List<TicketModel>> getTicketsForAdmin(UserModel user, {String? status}) {
+    Query query = _firestore.collection('TICKETS');
+
+    if (status != null && status.trim().isNotEmpty) {
+      query = query.where('status', isEqualTo: status.trim());
+    }
+
+    if (_isOfficeAdminUser(user) && (user.officeId ?? '').trim().isNotEmpty) {
+      query = query.where('officeId', isEqualTo: user.officeId!.trim());
+    }
+
+    return query.snapshots().map((snapshot) {
+      final tickets = snapshot.docs
+          .map((doc) => TicketModel.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+      tickets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return tickets;
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> getEscalationLogsForAdmin(UserModel user) {
+    Query query = _firestore.collection('ESCALATION_LOGS');
+
+    if (_isOfficeAdminUser(user) && (user.officeId ?? '').trim().isNotEmpty) {
+      query = query.where('officeId', isEqualTo: user.officeId!.trim());
+    }
+
+    return query.snapshots().map((snapshot) {
+      final logs = snapshot.docs
+          .map((doc) {
+            final data = (doc.data() as Map<String, dynamic>);
+            data['id'] = doc.id;
+            return data;
+          })
+          .toList();
+
+      logs.sort((a, b) {
+        final aTs = a['timestamp'];
+        final bTs = b['timestamp'];
+        final aMillis = aTs is Timestamp ? aTs.millisecondsSinceEpoch : 0;
+        final bMillis = bTs is Timestamp ? bTs.millisecondsSinceEpoch : 0;
+        return bMillis.compareTo(aMillis);
+      });
+      return logs;
+    });
+  }
+
+  Future<List<OfficeModel>> getAllOffices() async {
+    final snapshot = await _firestore.collection('OFFICES').get();
+    final offices = <OfficeModel>[];
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final latitude = (data['latitude'] as num?)?.toDouble();
+      final longitude = (data['longitude'] as num?)?.toDouble();
+      if (latitude == null || longitude == null) {
+        continue;
+      }
+
+      offices.add(
+        OfficeModel(
+          officeId: (data['officeId'] ?? doc.id).toString(),
+          regionId: (data['regionId'] ?? '').toString(),
+          name: (data['name'] ?? (data['officeId'] ?? doc.id)).toString(),
+          latitude: latitude,
+          longitude: longitude,
+          radiusKm: (data['radiusKm'] as num?)?.toDouble() ?? 1.0,
+          capacity: (data['capacity'] as num?)?.toInt() ?? 10,
+        ),
+      );
+    }
+
+    return offices;
   }
 
   // Get Tickets for Officer (Task Management)
@@ -281,7 +425,22 @@ class DatabaseService {
        }
     } else {
        // Field Staff or Default
-       query = query.where('currentOwnerId', isEqualTo: user.userId);
+       final ownerIds = <String>{};
+       final currentUid = FirebaseAuth.instance.currentUser?.uid;
+       if (currentUid != null && currentUid.trim().isNotEmpty) {
+         ownerIds.add(currentUid.trim());
+       }
+       if (user.userId.trim().isNotEmpty) {
+         ownerIds.add(user.userId.trim());
+       }
+
+       if (ownerIds.length == 1) {
+         query = query.where('currentOwnerId', isEqualTo: ownerIds.first);
+       } else if (ownerIds.length > 1) {
+         query = query.where('currentOwnerId', whereIn: ownerIds.toList());
+       } else {
+         query = query.where('currentOwnerId', isEqualTo: '__none__');
+       }
     }
 
     // Sort by recent (Client-side to avoid composite index issues)
@@ -331,8 +490,8 @@ class DatabaseService {
         else if (p.contains('medium')) medium++;
         else if (p.contains('low')) low++;
         
-        // Escalated flag check (if exists in model) or Status check
-        if (t.escalationLevel > 0) escalated++;
+        // Count only open escalations to keep dashboard numbers accurate.
+        if (_isOpenEscalatedTicket(t)) escalated++;
       }
 
       return DashboardStats(
@@ -362,58 +521,119 @@ class DatabaseService {
     });
   }
 
+  Stream<List<TicketModel>> getOpenEscalatedTickets(UserModel user, {int? limit}) {
+    return getOfficerTickets(user).map((tickets) {
+      final escalated = tickets.where(_isOpenEscalatedTicket).toList();
+      escalated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (limit != null && limit > 0 && escalated.length > limit) {
+        return escalated.take(limit).toList();
+      }
+      return escalated;
+    });
+  }
+
   // Get Subordinate Staff
   Stream<List<UserModel>> getSubordinateStaff(UserModel user) {
-    Query query = _firestore.collection('USERS');
-    
     String desig = (user.designation ?? '').toUpperCase();
     String role = (user.role ?? '').toUpperCase();
-    
-    if (desig.contains('CHIEF') || role == 'CE') {
-       // CE (Region) -> SE (Circle)
-       if (user.regionId != null) {
-          query = query.where('regionId', isEqualTo: user.regionId)
-                       .where('role', whereIn: ['Superintending Engineer', 'SE']); 
-       }
-    } else if (desig.contains('SUPERINTEND') || role == 'SE') {
-       // SE (Circle) -> EE (Division)
-       if (user.circleId != null) {
-          query = query.where('circleId', isEqualTo: user.circleId)
-                       .where('role', whereIn: ['Executive Engineer', 'EE']); 
-       }
-    } else if (desig.contains('EXECUTIVE') && !desig.contains('DEPUTY') || role == 'EE') {
-       // EE (Division) -> DyEE, AE, JE
-       if (user.divisionId != null) {
-          query = query.where('divisionId', isEqualTo: user.divisionId)
-                       .where('role', whereIn: ['Deputy Executive Engineer', 'DyEE', 'Assistant Engineer', 'AE', 'Junior Engineer', 'JE']);
-       }
-    } else if (desig.contains('DEPUTY') || role == 'DYEE' || desig.contains('DE') || role == 'DE') {
-        // DyEE -> AE, JE
-        if (user.divisionId != null) {
-            query = query.where('divisionId', isEqualTo: user.divisionId)
-                         .where('role', whereIn: ['Assistant Engineer', 'AE', 'Junior Engineer', 'JE']);
-        }
-    } else if (desig.contains('ASSISTANT') || role == 'AE') {
-       // AE -> JE, Field
-       if (user.officeId != null) {
-           query = query.where('officeId', isEqualTo: user.officeId)
-                        .where('role', whereIn: ['Junior Engineer', 'JE', 'Field Officer', 'FE', 'Technician']);
-       }
-    } else if (desig.contains('JUNIOR') || role == 'JE') {
-       // JE -> Field Staff
-       if (user.officeId != null) {
-         query = query.where('officeId', isEqualTo: user.officeId)
-                      .where('role', whereIn: ['Field Officer', 'FieldOfficer', 'FE', 'Technician']);
-       }
+
+    String? scopeField;
+    String? scopeValue;
+
+    if (desig.contains('CHIEF') || role == 'CE' || role.startsWith('ce_')) {
+      scopeField = 'regionId';
+      scopeValue = user.regionId;
+    } else if (desig.contains('SUPERINTEND') || role == 'SE' || role.startsWith('se_')) {
+      scopeField = 'circleId';
+      scopeValue = user.circleId;
+    } else if (desig.contains('EXECUTIVE') && !desig.contains('DEPUTY') || role == 'EE' || role.startsWith('ee_')) {
+      scopeField = 'divisionId';
+      scopeValue = user.divisionId;
+    } else if (desig.contains('DEPUTY') || role == 'DYEE' || desig.contains('DE') || role == 'DE' || role.startsWith('dee_')) {
+      scopeField = 'divisionId';
+      scopeValue = user.divisionId;
+    } else if (desig.contains('ASSISTANT') || role == 'AE' || role.startsWith('ae_')) {
+      scopeField = 'officeId';
+      scopeValue = user.officeId;
+    } else if (desig.contains('JUNIOR') || role == 'JE' || role.startsWith('je_')) {
+      scopeField = 'officeId';
+      scopeValue = user.officeId;
     } else {
-        return Stream.value([]);
+      return Stream.value([]);
     }
-    
-    return query.snapshots().map((s) => 
-        s.docs.map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
-        .where((u) => u.userId != user.userId) // Exclude self
-        .toList()
-    );
+
+    if (scopeValue == null) {
+      return Stream.value([]);
+    }
+
+    return _firestore.collection('USERS').where(scopeField, isEqualTo: scopeValue).snapshots().map((s) {
+      final staff = s.docs.map((d) => UserModel.fromMap(d.data() as Map<String, dynamic>))
+          .where((u) => u.userId != user.userId)
+          .where((u) => _isSubordinateForUser(u, user))
+          .toList();
+      staff.sort((a, b) => a.designation.compareTo(b.designation));
+      return staff;
+    });
+  }
+
+  bool _isSubordinateForUser(UserModel candidate, UserModel user) {
+    final candidateRole = candidate.role.toUpperCase();
+    final candidateDesignation = candidate.designation.toUpperCase();
+    final userRole = user.role.toUpperCase();
+    final userDesignation = user.designation.toUpperCase();
+
+    bool isFieldStaff(String roleValue, String designationValue) {
+      return roleValue.startsWith('LINEMAN') ||
+          roleValue.startsWith('PLUMBER') ||
+          roleValue.startsWith('ROAD_WORKER') ||
+          roleValue.startsWith('SANITATION_WORKER') ||
+          roleValue.startsWith('SANITARY_INSPECTOR') ||
+          roleValue.startsWith('MUKADAM') ||
+          roleValue.startsWith('HEALTH_WORKER') ||
+          roleValue.startsWith('TECHNICIAN') ||
+          designationValue.contains('WORKER') ||
+          designationValue.contains('TECHNICIAN') ||
+          designationValue.contains('INSPECTOR') ||
+          designationValue.contains('SUPERVISOR');
+    }
+
+    if (userDesignation.contains('CHIEF') || userRole == 'CE' || userRole.startsWith('ce_')) {
+      return candidateDesignation.contains('SUPERINTEND') || candidateRole.startsWith('se_');
+    }
+
+    if (userDesignation.contains('SUPERINTEND') || userRole == 'SE' || userRole.startsWith('se_')) {
+      return candidateDesignation.contains('EXECUTIVE') || candidateRole.startsWith('ee_');
+    }
+
+    if (userDesignation.contains('EXECUTIVE') && !userDesignation.contains('DEPUTY') || userRole == 'EE' || userRole.startsWith('ee_')) {
+      return candidateDesignation.contains('DEPUTY') ||
+          candidateDesignation.contains('ASSISTANT') ||
+          candidateDesignation.contains('JUNIOR') ||
+          candidateRole.startsWith('dee_') ||
+          candidateRole.startsWith('ae_') ||
+          candidateRole.startsWith('je_') ||
+          isFieldStaff(candidateRole, candidateDesignation);
+    }
+
+    if (userDesignation.contains('DEPUTY') || userRole == 'DYEE' || userRole == 'DE' || userRole.startsWith('dee_')) {
+      return candidateDesignation.contains('ASSISTANT') ||
+          candidateDesignation.contains('JUNIOR') ||
+          candidateRole.startsWith('ae_') ||
+          candidateRole.startsWith('je_') ||
+          isFieldStaff(candidateRole, candidateDesignation);
+    }
+
+    if (userDesignation.contains('ASSISTANT') || userRole == 'AE' || userRole.startsWith('ae_')) {
+      return candidateDesignation.contains('JUNIOR') ||
+          candidateRole.startsWith('je_') ||
+          isFieldStaff(candidateRole, candidateDesignation);
+    }
+
+    if (userDesignation.contains('JUNIOR') || userRole == 'JE' || userRole.startsWith('je_')) {
+      return isFieldStaff(candidateRole, candidateDesignation);
+    }
+
+    return false;
   }
   
   // Update Ticket Status
@@ -474,6 +694,7 @@ class DatabaseService {
             title: notifTitle,
             body: notifBody,
             userId: citizenId,
+            recipientEmail: null,
             type: 'ticket_status',
             ticketId: ticketId,
           );
@@ -481,10 +702,12 @@ class DatabaseService {
 
         // 2. Notify Current Owner (if different from changer) - simplified, notify owner always
         if (currentOwnerId != null && currentOwnerId != officerId) {
+           final ownerEmail = await _resolveUserEmail(currentOwnerId);
            await _notificationService.sendNotification(
             title: 'Ticket Updated',
             body: 'Ticket ${ticketId} status changed to $newStatus.',
             userId: currentOwnerId,
+            recipientEmail: ownerEmail,
             type: 'ticket_assignment',
             ticketId: ticketId,
           );
@@ -499,6 +722,245 @@ class DatabaseService {
     if (officerId != null) {
        await _clusteringService.syncClusterStatus(ticketId, newStatus, officerId);
     }
+  }
+
+  Future<void> submitResolutionForVerification({
+    required String ticketId,
+    required String officerId,
+    required String resolutionDescription,
+    required List<String> resolutionImageUrls,
+  }) async {
+    final cleanDescription = resolutionDescription.trim();
+    if (cleanDescription.isEmpty) {
+      throw Exception('Resolution description is required.');
+    }
+    if (resolutionImageUrls.isEmpty) {
+      throw Exception('At least one resolution image is required.');
+    }
+
+    await _firestore.collection('TICKETS').doc(ticketId).update({
+      'status': AppConstants.statusResolved,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'escalationLevel': 0,
+      'resolutionDescription': cleanDescription,
+      'resolutionImageUrls': resolutionImageUrls,
+      'resolutionSubmittedAt': FieldValue.serverTimestamp(),
+      'resolutionSubmittedBy': officerId,
+    });
+
+    await _firestore.collection('TICKET_STATUS_LOGS').add({
+      'ticketId': ticketId,
+      'status': AppConstants.statusResolved,
+      'changedBy': officerId,
+      'timestamp': FieldValue.serverTimestamp(),
+      'note': cleanDescription,
+    });
+
+    final ticketDoc = await _firestore.collection('TICKETS').doc(ticketId).get();
+    if (!ticketDoc.exists) return;
+    final data = ticketDoc.data()!;
+    final citizenId = data['citizenId']?.toString();
+    if (citizenId == null || citizenId.isEmpty) return;
+
+    await _notificationService.sendNotification(
+      title: 'Complaint Resolved',
+      body: 'Your complaint has been resolved. Officer uploaded solved-site image(s) and work description.',
+      userId: citizenId,
+      recipientEmail: null,
+      type: 'ticket_resolved',
+      ticketId: ticketId,
+    );
+  }
+
+  Future<List<TicketModel>> getPreviouslySolvedComplaints({
+    required TicketModel sourceTicket,
+    int limit = 8,
+  }) async {
+    if (sourceTicket.latitude == null || sourceTicket.longitude == null) {
+      return [];
+    }
+
+    final normalizedSourceTitle = _normalizeTitle(sourceTicket.title);
+    final sourceTokens = _tokenizeTitle(normalizedSourceTitle);
+    if (normalizedSourceTitle.isEmpty) {
+      return [];
+    }
+
+    Query query = _firestore.collection('TICKETS');
+
+    // Keep query scope narrow to avoid heavy reads and stay aligned with officer jurisdiction.
+    if (sourceTicket.officeId != null && sourceTicket.officeId!.isNotEmpty) {
+      query = query.where('officeId', isEqualTo: sourceTicket.officeId);
+    } else if (sourceTicket.regionId != null && sourceTicket.regionId!.isNotEmpty) {
+      query = query.where('regionId', isEqualTo: sourceTicket.regionId);
+    } else if (sourceTicket.circleId != null && sourceTicket.circleId!.isNotEmpty) {
+      query = query.where('circleId', isEqualTo: sourceTicket.circleId);
+    } else if (sourceTicket.divisionId != null && sourceTicket.divisionId!.isNotEmpty) {
+      query = query.where('divisionId', isEqualTo: sourceTicket.divisionId);
+    }
+
+    final snapshot = await query.get();
+    final matches = <TicketModel>[];
+
+    for (final doc in snapshot.docs) {
+      final ticket = TicketModel.fromMap(doc.data() as Map<String, dynamic>);
+
+      if (ticket.ticketId == sourceTicket.ticketId) continue;
+
+      final isSolved = ticket.status == AppConstants.statusResolved ||
+          ticket.status == AppConstants.statusClosed;
+      if (!isSolved) continue;
+
+      if (sourceTicket.departmentId.isNotEmpty &&
+          ticket.departmentId != sourceTicket.departmentId) {
+        continue;
+      }
+
+      final normalizedCandidateTitle = _normalizeTitle(ticket.title);
+      final candidateTokens = _tokenizeTitle(normalizedCandidateTitle);
+      if (!_isTitleMatch(
+        sourceTitle: normalizedSourceTitle,
+        candidateTitle: normalizedCandidateTitle,
+        sourceTokens: sourceTokens,
+        candidateTokens: candidateTokens,
+      )) {
+        continue;
+      }
+
+      if (ticket.latitude == null || ticket.longitude == null) continue;
+
+      final distanceMeters = Geolocator.distanceBetween(
+        sourceTicket.latitude!,
+        sourceTicket.longitude!,
+        ticket.latitude!,
+        ticket.longitude!,
+      );
+      if (distanceMeters > 100) continue;
+
+        final hasResolutionProof =
+          (ticket.resolutionDescription != null &&
+              ticket.resolutionDescription!.trim().isNotEmpty) ||
+          ticket.resolutionImageUrls.isNotEmpty;
+      if (!hasResolutionProof) continue;
+
+      matches.add(ticket);
+    }
+
+    // If no strict scoped result is found, run a global strict fallback.
+    if (matches.isEmpty) {
+      final globalSnapshot = await _firestore.collection('TICKETS').get();
+      for (final doc in globalSnapshot.docs) {
+        final ticket = TicketModel.fromMap(doc.data() as Map<String, dynamic>);
+        if (_isStrictHistoricalMatch(sourceTicket, ticket, normalizedSourceTitle, sourceTokens)) {
+          matches.add(ticket);
+        }
+      }
+    }
+
+    matches.sort((a, b) {
+      final left = a.resolvedAt ?? a.createdAt;
+      final right = b.resolvedAt ?? b.createdAt;
+      return right.compareTo(left);
+    });
+
+    return matches.take(limit).toList();
+  }
+
+  bool _isStrictHistoricalMatch(
+    TicketModel sourceTicket,
+    TicketModel ticket,
+    String normalizedSourceTitle,
+    Set<String> sourceTokens,
+  ) {
+    if (ticket.ticketId == sourceTicket.ticketId) return false;
+
+    final isSolved = ticket.status == AppConstants.statusResolved ||
+        ticket.status == AppConstants.statusClosed;
+    if (!isSolved) return false;
+
+    if (sourceTicket.departmentId.isNotEmpty &&
+        ticket.departmentId != sourceTicket.departmentId) {
+      return false;
+    }
+
+    final normalizedCandidateTitle = _normalizeTitle(ticket.title);
+    final candidateTokens = _tokenizeTitle(normalizedCandidateTitle);
+    if (!_isTitleMatch(
+      sourceTitle: normalizedSourceTitle,
+      candidateTitle: normalizedCandidateTitle,
+      sourceTokens: sourceTokens,
+      candidateTokens: candidateTokens,
+    )) {
+      return false;
+    }
+
+    if (ticket.latitude == null || ticket.longitude == null) return false;
+
+    final distanceMeters = Geolocator.distanceBetween(
+      sourceTicket.latitude!,
+      sourceTicket.longitude!,
+      ticket.latitude!,
+      ticket.longitude!,
+    );
+    if (distanceMeters > 100) return false;
+
+    final hasResolutionProof =
+        (ticket.resolutionDescription != null &&
+            ticket.resolutionDescription!.trim().isNotEmpty) ||
+        ticket.resolutionImageUrls.isNotEmpty;
+    if (!hasResolutionProof) return false;
+
+    return true;
+  }
+
+  String _normalizeTitle(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  Set<String> _tokenizeTitle(String normalizedTitle) {
+    final stopwords = <String>{
+      'the', 'and', 'for', 'with', 'from', 'this', 'that', 'near', 'road',
+      'area', 'issue', 'problem', 'complaint', 'new', 'old', 'not', 'is', 'are', 'to'
+    };
+
+    return normalizedTitle
+        .split(' ')
+        .where((w) => w.length >= 3 && !stopwords.contains(w))
+        .toSet();
+  }
+
+  bool _isTitleMatch({
+    required String sourceTitle,
+    required String candidateTitle,
+    required Set<String> sourceTokens,
+    required Set<String> candidateTokens,
+  }) {
+    if (sourceTitle == candidateTitle) return true;
+
+    // Accept minor phrasing differences such as prefixes/suffixes.
+    if (sourceTitle.length >= 6 &&
+        candidateTitle.length >= 6 &&
+        (sourceTitle.contains(candidateTitle) || candidateTitle.contains(sourceTitle))) {
+      return true;
+    }
+
+    if (sourceTokens.isEmpty || candidateTokens.isEmpty) return false;
+
+    final overlap = sourceTokens.intersection(candidateTokens);
+    if (overlap.isEmpty) return false;
+
+    final smaller = sourceTokens.length < candidateTokens.length
+        ? sourceTokens.length
+        : candidateTokens.length;
+    final ratio = overlap.length / smaller;
+
+    // Require strong lexical match while allowing small wording differences.
+    return overlap.length >= 2 || ratio >= 0.6;
   }
 
   // Get All Staff (For Admin)
@@ -605,5 +1067,6 @@ class DatabaseService {
     }
   }
 }
+
 
 

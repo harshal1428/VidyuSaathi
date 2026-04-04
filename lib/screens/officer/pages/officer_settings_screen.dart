@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vidyusaathi/constants/app_colors.dart';
-import 'package:vidyusaathi/provider/admin/theme_provider.dart';
+import 'package:civic_core/constants/app_colors.dart';
+import 'package:civic_core/provider/admin/theme_provider.dart';
 
 class OfficerSettingsScreen extends StatelessWidget {
   const OfficerSettingsScreen({Key? key}) : super(key: key);

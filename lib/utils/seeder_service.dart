@@ -1,321 +1,455 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 import '../models/user_model.dart';
 import '../models/structure_models.dart';
 import '../models/complaint_type_model.dart';
+import '../models/department_model.dart';
 import '../core/constants.dart';
 
 class SeederService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> seedHierarchicalData() async {
-    print("Starting Hierarchical Data Seeding (Pune Zone)...");
-    
-    final divisionId = 'zone_pune'; // Using 'zone' conceptually as CE Head
-    // CE 10000001
-    await _seedUser('10000001', 'Sanjay Patil', 'sanjay.patil@mahavitaran.in', 'CE', 'Chief Engineer', 
-        divisionId: divisionId, officeId: 'office_pune_hq');
-
-    // === CIRCLE 1: PUNE CITY ZONE 1 ===
-    final c1Id = 'circle_pune_1';
-    await _firestore.collection('CIRCLES').doc(c1Id).set(
-      CircleModel(circleId: c1Id, divisionId: divisionId, name: 'Pune City Zone 1').toMap()
-    );
-    // SE 1
-    await _seedUser('10000002', 'Milind Deshmukh', 'milind.deshmukh@mahavitaran.in', 'SE', 'Superintending Engineer', 
-        divisionId: divisionId, circleId: c1Id, officeId: 'office_circle_1');
-
-    // -- Region 1: Central --
-    await _seedRegion(
-      regionId: 'reg_central', circleId: c1Id, regionName: 'Central',
-      eeData: ['10000004', 'Pravin Kulkarni', 'pravin.kulkarni@mahavitaran.in'],
-      dyeeData: ['10000005', 'Sachin Joshi', 'sachin.joshi@mahavitaran.in'],
-      offices: [
-        _OfficeSeed('off_shivajinagar', 'Shivajinagar Office', 
-            '10000012', 'Rohit Bhosale', 'rohit.bhosale@mahavitaran.in', 
-            '10000013', 'Amol Jadhav', 'amol.jadhav@mahavitaran.in', 
-            ['10000014', 'Nilesh Pawar', 'nilesh.pawar@mahavitaran.in'],
-            admin: '10000015', adminName: 'Admin Shivajinagar', adminEmail: 'admin.shivajinagar@mahavitaran.in',
-            lat: 18.5303, lng: 73.8499), // Updated as per user request (Shivajinagar)
-        _OfficeSeed('off_swargate', 'Swargate Office', 
-            '10000020', 'Rahul Jagtap', 'rahul.jagtap@mahavitaran.in', 
-            '10000021', 'Sandeep More', 'sandeep.more@mahavitaran.in', 
-            ['10000022', 'Manoj Patil', 'manoj.patil@mahavitaran.in'],
-             admin: '10000023', adminName: 'Admin Swargate', adminEmail: 'admin.swargate@mahavitaran.in',
-             lat: 18.5008, lng: 73.8584),
-      ]
-    );
-
-    // -- Region 2: East-South --
-    await _seedRegion(
-      regionId: 'reg_east_south', circleId: c1Id, regionName: 'East-South',
-      eeData: ['10000006', 'Mahesh Gokhale', 'mahesh.gokhale@mahavitaran.in'],
-      dyeeData: ['10000008', 'Vijay Chavan', 'vijay.chavan@mahavitaran.in'],
-      offices: [
-        _OfficeSeed('off_hadapsar', 'Hadapsar Office', 
-            '10000028', 'Yogesh Patil', 'yogesh.patil@mahavitaran.in', 
-            '10000029', 'Shailesh Jadhav', 'shailesh.jadhav@mahavitaran.in', 
-            ['10000030', 'Ganesh Shinde', 'ganesh.shinde@mahavitaran.in'],
-            admin: '10000031', adminName: 'Admin Hadapsar', adminEmail: 'admin.hadapsar@mahavitaran.in',
-            lat: 18.5089, lng: 73.9259),
-        _OfficeSeed('off_katraj', 'Katraj Office', 
-            '10000024', 'Amit Kulkarni', 'amit.kulkarni@mahavitaran.in', 
-            '10000025', 'Pankaj Deshmukh', 'pankaj.deshmukh@mahavitaran.in', 
-            ['10000026', 'Vinod Pawar', 'vinod.pawar@mahavitaran.in'],
-             admin: '10000027', adminName: 'Admin Katraj', adminEmail: 'admin.katraj@mahavitaran.in',
-             lat: 18.4529, lng: 73.8552), // Adjusted for better separation
-      ]
-    );
-
-
-    // === CIRCLE 2: PUNE CITY ZONE 2 ===
-    final c2Id = 'circle_pune_2';
-    await _firestore.collection('CIRCLES').doc(c2Id).set(
-      CircleModel(circleId: c2Id, divisionId: divisionId, name: 'Pune City Zone 2').toMap()
-    );
-    // SE 2
-    await _seedUser('10000003', 'Anil Phadke', 'anil.phadke@mahavitaran.in', 'SE', 'Superintending Engineer', 
-        divisionId: divisionId, circleId: c2Id, officeId: 'office_circle_2');
-
-    // -- Region 3: West --
-    await _seedRegion(
-      regionId: 'reg_west', circleId: c2Id, regionName: 'West',
-      eeData: ['10000010', 'Ketan Shirole', 'ketan.shirole@mahavitaran.in'],
-      dyeeData: ['10000011', 'Harish Naik', 'harish.naik@mahavitaran.in'],
-      offices: [
-        _OfficeSeed('off_kothrud', 'Kothrud Office', 
-            '10000036', 'Kunal Desai', 'kunal.desai@mahavitaran.in', 
-            '10000037', 'Ajay Chavan', 'ajay.chavan@mahavitaran.in', 
-            ['10000038', 'Prashant Kale', 'prashant.kale@mahavitaran.in'],
-            admin: '10000039', adminName: 'Admin Kothrud', adminEmail: 'admin.kothrud@mahavitaran.in',
-            lat: 18.5074, lng: 73.8077),
-        _OfficeSeed('off_aundh', 'Aundh Office', 
-            '10000016', 'Akshay Gaikwad', 'akshay.gaikwad@mahavitaran.in', 
-            '10000017', 'Swapnil More', 'swapnil.more@mahavitaran.in', 
-            ['10000018', 'Suresh Kapse', 'suresh.kapse@mahavitaran.in'],
-            admin: '10000019', adminName: 'Admin Aundh', adminEmail: 'admin.aundh@mahavitaran.in',
-            lat: 18.5639, lng: 73.8073),
-      ]
-    );
-
-     // -- Region 4: North --
-    await _seedRegion(
-      regionId: 'reg_north', circleId: c2Id, regionName: 'North',
-      eeData: ['10000050', 'Suresh Raina', 'suresh.raina@mahavitaran.in'],
-      dyeeData: ['10000051', 'Zaheer Khan', 'zaheer.khan@mahavitaran.in'],
-      offices: [
-        _OfficeSeed('off_yerwada', 'Yerwada Office', 
-            '10000040', 'Ramesh Patil', 'ramesh.patil@mahavitaran.in', 
-            '10000041', 'Sunil Pawar', 'sunil.pawar@mahavitaran.in', 
-            ['10000042', 'Deepak Shinde', 'deepak.shinde@mahavitaran.in'],
-            admin: '10000043', adminName: 'Admin Yerwada', adminEmail: 'admin.yerwada@mahavitaran.in',
-            lat: 18.5529, lng: 73.8797),
-        _OfficeSeed('off_pimpri', 'Pimpri Office', 
-            '10000044', 'Virat Kohli', 'virat.kohli@mahavitaran.in', 
-            '10000045', 'Rohit Sharma', 'rohit.sharma@mahavitaran.in', 
-            ['10000046', 'Hardik Pandya', 'hardik.pandya@mahavitaran.in'],
-            admin: '10000047', adminName: 'Admin Pimpri', adminEmail: 'admin.pimpri@mahavitaran.in',
-            lat: 18.6298, lng: 73.7997),
-      ]
-    );
-
-    print("Seeding Complete. All Users & Structures Created.");
-  }
-
-  Future<void> _seedRegion({
-    required String regionId, 
-    required String circleId, 
-    required String regionName,
-    required List<String> eeData,
-    required List<String> dyeeData,
-    required List<_OfficeSeed> offices
-  }) async {
-    // Create Region
-    await _firestore.collection('REGIONS').doc(regionId).set(
-      RegionModel(regionId: regionId, circleId: circleId, name: regionName).toMap()
-    );
-
-    // EE User
-    await _seedUser(eeData[0], eeData[1], eeData[2], 'EE', 'Executive Engineer', 
-        divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: 'office_${regionName.toLowerCase()}_ee');
-    
-    // DyEE User
-    await _seedUser(dyeeData[0], dyeeData[1], dyeeData[2], 'DyEE', 'Deputy Executive Engineer', 
-        divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: 'office_${regionName.toLowerCase()}_dyee');
-
-    // Create Offices and their Staff
-    for (var off in offices) {
-      double radius = 15;
-      if (off.name.contains('Shivajinagar')) radius = 3; // Explicit User Rule for Shivajinagar
-
-      await _firestore.collection('OFFICES').doc(off.id).set(
-        OfficeModel(officeId: off.id, regionId: regionId, name: off.name, 
-            latitude: off.lat, longitude: off.lng, radiusKm: radius).toMap() 
+  Future<void> performSafetyCheckAndSeed(BuildContext context) async {
+    final docs = await _firestore.collection('DEPARTMENTS').limit(5).get();
+    if (docs.docs.length >= 5) {
+      if (!context.mounted) return;
+      bool? wipe = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Data already seeded. Wipe and re-seed?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          ]
+        )
       );
+      if (wipe != true) return;
 
-      // JE
-      await _seedUser(off.jeId, off.jeName, off.jeEmail, 'JE', 'Junior Engineer',
-          divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: off.id);
+      print("Wiping existing seeded data...");
+      var depts = await _firestore.collection('DEPARTMENTS').get();
+      for (var doc in depts.docs) { await doc.reference.delete(); }
+
+      var cTypes = await _firestore.collection('COMPLAINT_TYPES').get();
+      for (var doc in cTypes.docs) { await doc.reference.delete(); }
       
-      // AE
-      await _seedUser(off.aeId, off.aeName, off.aeEmail, 'AE', 'Assistant Engineer',
-          divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: off.id);
-      
-      // Admin
-      if (off.admin != null) {
-         await _seedUser(off.admin!, off.adminName!, off.adminEmail!, 'OFFICE_ADMIN', 'Admin',
-            divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: off.id);
+      var usersQuery = await _firestore.collection('USERS').where('employeeId', isGreaterThan: '').get();
+      final batch = _firestore.batch();
+      for (var doc in usersQuery.docs) {
+        batch.delete(doc.reference);
       }
-
-      // Field Officers
-      for (int i = 0; i < off.foData.length; i+=3) {
-        await _seedUser(off.foData[i], off.foData[i+1], off.foData[i+2], 'FieldOfficer', 'Field Officer',
-            divisionId: 'zone_pune', circleId: circleId, regionId: regionId, officeId: off.id);
+      // Since some seeded records might not be caught by isGreaterThan if they are missing entirely, let's also delete all from structured tables
+      await batch.commit();
+      
+      for (String col in ['DIVISIONS', 'CIRCLES', 'REGIONS', 'OFFICES']) {
+         var cdocs = await _firestore.collection(col).get();
+         final cb = _firestore.batch();
+         for(var d in cdocs.docs) cb.delete(d.reference);
+         await cb.commit();
       }
     }
+
+    await seedHierarchicalData();
+    await seedComplaintTypes();
+    
+    print('''✅ CivicCore Seeder Complete:
+ - 5 Departments
+ - 10 Circles (2 per dept)
+ - 20 Regions (4 per dept)
+ - 40 Offices (8 per dept)
+ - 175 Officers (35 per dept)
+ - 61 Complaint Types''');
   }
 
-  Future<void> _seedUser(String uid, String name, String email, String role, String designation, 
-      {String? divisionId, String? circleId, String? regionId, String? officeId}) async {
-    
-    final user = UserModel(
-      userId: uid,
-      name: name,
-      email: email,
-      phone: '9890000000', // Dummy
-      role: role,
-      designation: designation,
-      divisionId: divisionId,
-      circleId: circleId,
-      regionId: regionId,
-      officeId: officeId,
-      createdAt: DateTime.now(),
-      isActive: true,
-    );
-    
-    await _firestore.collection('USERS').doc(uid).set(user.toMap());
+  Future<void> seedHierarchicalData() async {
+    print("Starting Hierarchical Data Seeding (5 Departments)...");
+
+    final List<Map<String, dynamic>> regionsGeo = [
+      {'idPrefix': 'shivajinagar', 'name': 'Shivajinagar Region', 'circle': 'urban'},
+      {'idPrefix': 'swargate', 'name': 'Swargate Region', 'circle': 'urban'},
+      {'idPrefix': 'hinjewadi', 'name': 'Hinjewadi Region', 'circle': 'rural'},
+      {'idPrefix': 'baramati', 'name': 'Baramati Region', 'circle': 'rural'},
+    ];
+
+     final List<Map<String, dynamic>> officesGeo = [
+       {'idPrefix': 'shivajinagar', 'name': 'Shivajinagar Division Office', 'lat': 18.5308, 'lng': 73.8474, 'region': 'shivajinagar', 'radius': 5},
+       {'idPrefix': 'aundh', 'name': 'Aundh Division Office', 'lat': 18.5590, 'lng': 73.8077, 'region': 'shivajinagar', 'radius': 5},
+       {'idPrefix': 'swgt', 'name': 'Swargate Division Office', 'lat': 18.5018, 'lng': 73.8636, 'region': 'swargate', 'radius': 5},
+       {'idPrefix': 'katraj', 'name': 'Katraj Division Office', 'lat': 18.4529, 'lng': 73.8567, 'region': 'swargate', 'radius': 5},
+       {'idPrefix': 'hinjewadi', 'name': 'Hinjewadi Division Office', 'lat': 18.5912, 'lng': 73.7389, 'region': 'hinjewadi', 'radius': 7},
+       {'idPrefix': 'pirangut', 'name': 'Pirangut Division Office', 'lat': 18.5284, 'lng': 73.6710, 'region': 'hinjewadi', 'radius': 8},
+       {'idPrefix': 'baramati', 'name': 'Baramati Division Office', 'lat': 18.1528, 'lng': 74.5826, 'region': 'baramati', 'radius': 10},
+       {'idPrefix': 'indapur', 'name': 'Indapur Division Office', 'lat': 18.1147, 'lng': 75.0139, 'region': 'baramati', 'radius': 12},
+    ];
+
+    final List<Map<String, dynamic>> departments = [
+      {
+        'id': 'dept_electricity', 'name': 'Electricity (MSEDCL)', 'shortName': 'MSEDCL', 
+        'categories': ['Streetlight', 'Safety'], 
+        'slaConfig': {'Critical': 2, 'High': 12, 'Medium': 48, 'Low': 120},
+        'prefix': 11000000,
+        'hier': [
+          {'level': 1, 'role': 'lineman', 'title': 'Lineman / Wireman'},
+          {'level': 2, 'role': 'je_elec', 'title': 'Junior Engineer (JE)'},
+          {'level': 3, 'role': 'ae_elec', 'title': 'Assistant Engineer (AE)'},
+          {'level': 4, 'role': 'dee_elec', 'title': 'Deputy Executive Engineer (DEE)'},
+          {'level': 5, 'role': 'ee_elec', 'title': 'Executive Engineer (EE)'},
+          {'level': 6, 'role': 'se_elec', 'title': 'Superintending Engineer (SE)'},
+          {'level': 7, 'role': 'ce_elec', 'title': 'Chief Engineer (CE)'},
+        ]
+      },
+      {
+        'id': 'dept_garbage', 'name': 'Garbage & Sanitation (PMC)', 'shortName': 'PMC-GBG',
+        'categories': ['Garbage', 'Encroachment', 'Infrastructure', 'Animals', 'Governance'],
+        'slaConfig': {'Critical': 4, 'High': 12, 'Medium': 48, 'Low': 120},
+        'prefix': 22000000,
+        'hier': [
+          {'level': 1, 'role': 'sanitation_worker', 'title': 'Sanitation Worker'},
+          {'level': 2, 'role': 'mukadam', 'title': 'Mukadam / Supervisor'},
+          {'level': 3, 'role': 'sanitary_inspector', 'title': 'Sanitary Inspector'},
+          {'level': 4, 'role': 'ward_officer', 'title': 'Ward Officer'},
+          {'level': 5, 'role': 'amc_gbg', 'title': 'Assistant Municipal Commissioner (AMC)'},
+          {'level': 6, 'role': 'dmc_gbg', 'title': 'Deputy Municipal Commissioner (DMC)'},
+          {'level': 7, 'role': 'commissioner_gbg', 'title': 'Additional / Municipal Commissioner'},
+        ]
+      },
+      {
+        'id': 'dept_water', 'name': 'Water Supply (PMC Water)', 'shortName': 'PMC-WTR',
+        'categories': ['Water', 'Drainage'],
+        'slaConfig': {'Critical': 1, 'High': 6, 'Medium': 24, 'Low': 72},
+        'prefix': 33000000,
+        'hier': [
+          {'level': 1, 'role': 'plumber', 'title': 'Plumber / Valve Operator'},
+          {'level': 2, 'role': 'je_water', 'title': 'Junior Engineer (Water)'},
+          {'level': 3, 'role': 'ae_water', 'title': 'Assistant Engineer (Water)'},
+          {'level': 4, 'role': 'sde_water', 'title': 'Sub Divisional Engineer (SDE)'},
+          {'level': 5, 'role': 'ee_water', 'title': 'Executive Engineer (Water)'},
+          {'level': 6, 'role': 'se_water', 'title': 'Superintending Engineer (Water)'},
+          {'level': 7, 'role': 'ce_water', 'title': 'Chief Engineer (Water)'},
+        ]
+      },
+      {
+        'id': 'dept_roads', 'name': 'Roads & PWD (PMC Roads)', 'shortName': 'PMC-PWD',
+        'categories': ['Roads'],
+        'slaConfig': {'Critical': 4, 'High': 24, 'Medium': 72, 'Low': 168},
+        'prefix': 44000000,
+        'hier': [
+          {'level': 1, 'role': 'road_worker', 'title': 'Road Maintenance Worker'},
+          {'level': 2, 'role': 'je_roads', 'title': 'Junior Engineer (Roads)'},
+          {'level': 3, 'role': 'ae_roads', 'title': 'Assistant Engineer (Roads)'},
+          {'level': 4, 'role': 'sde_roads', 'title': 'Sub Divisional Engineer (SDE)'},
+          {'level': 5, 'role': 'ee_roads', 'title': 'Executive Engineer (Roads)'},
+          {'level': 6, 'role': 'se_roads', 'title': 'Superintending Engineer (Roads)'},
+          {'level': 7, 'role': 'ce_roads', 'title': 'Chief Engineer (Roads/PWD)'},
+        ]
+      },
+      {
+        'id': 'dept_health', 'name': 'Health Department (PMC Health)', 'shortName': 'PMC-HLT',
+        'categories': ['Health', 'Epidemic', 'Sanitation_Health'],
+        'slaConfig': {'Critical': 1, 'High': 6, 'Medium': 24, 'Low': 72},
+        'prefix': 55000000,
+        'hier': [
+          {'level': 1, 'role': 'health_worker', 'title': 'ANM / Staff Nurse / Health Worker'},
+          {'level': 2, 'role': 'mo', 'title': 'Medical Officer (MO)'},
+          {'level': 3, 'role': 'smo', 'title': 'Senior Medical Officer'},
+          {'level': 4, 'role': 'ho_ward', 'title': 'Health Officer (Ward Level)'},
+          {'level': 5, 'role': 'amoh', 'title': 'Assistant Medical Officer of Health (AMOH)'},
+          {'level': 6, 'role': 'dmoh', 'title': 'Deputy Medical Officer of Health (DMOH)'},
+          {'level': 7, 'role': 'moh', 'title': 'Medical Officer of Health (MOH)'},
+        ]
+      }
+    ];
+
+    for (var dept in departments) {
+      DepartmentModel dModel = DepartmentModel(
+         id: dept['id'],
+         name: dept['name'],
+         shortName: dept['shortName'],
+         categories: List<String>.from(dept['categories']),
+         hierarchy: List<Map<String, dynamic>>.from(dept['hier']),
+         slaConfig: Map<String, int>.from(dept['slaConfig']),
+      );
+      await _firestore.collection('DEPARTMENTS').doc(dModel.id).set(dModel.toMap());
+
+      int _empCounter = 1;
+
+      String divId = "div_pune_${dept['id']}";
+      await _firestore.collection('DIVISIONS').doc(divId).set({
+        'divisionId': divId, 'name': "Pune Zone - ${dept['name']}", 'departmentId': dept['id']
+      });
+
+      final l7 = dept['hier'].firstWhere((h) => h['level'] == 7);
+      await _seedOfficer(
+        empId: (dept['prefix'] + _empCounter++).toString(),
+        dept: dept,
+        hier: l7,
+        officeName: "Pune Zone",
+        divisionId: divId,
+        emailTag: 'pune',
+      );
+
+      for (String circleType in ['urban', 'rural']) {
+        String circleId = "circle_${circleType}_${dept['id']}";
+        String circleName = circleType == 'urban' ? "Pune Urban Circle - ${dept['shortName']}" : "Pune Rural Circle - ${dept['shortName']}";
+        await _firestore.collection('CIRCLES').doc(circleId).set({
+          'circleId': circleId, 'divisionId': divId, 'name': circleName, 'departmentId': dept['id']
+        });
+
+        final l6 = dept['hier'].firstWhere((h) => h['level'] == 6);
+        await _seedOfficer(
+          empId: (dept['prefix'] + _empCounter++).toString(),
+          dept: dept,
+          hier: l6,
+          officeName: circleName,
+          divisionId: divId,
+          circleId: circleId,
+          emailTag: circleType == 'urban' ? 'urbn' : 'rural',
+        );
+
+        var circleRegions = regionsGeo.where((r) => r['circle'] == circleType).toList();
+        for (var reg in circleRegions) {
+          String regionId = "region_${reg['idPrefix']}_${dept['id']}";
+          await _firestore.collection('REGIONS').doc(regionId).set({
+            'regionId': regionId, 'circleId': circleId, 'divisionId': divId, 'name': reg['name'], 'departmentId': dept['id']
+          });
+
+          final l5 = dept['hier'].firstWhere((h) => h['level'] == 5);
+          final l4 = dept['hier'].firstWhere((h) => h['level'] == 4);
+          await _seedOfficer(
+            empId: (dept['prefix'] + _empCounter++).toString(),
+            dept: dept,
+            hier: l5,
+            officeName: reg['name'],
+            divisionId: divId,
+            circleId: circleId,
+            regionId: regionId,
+            emailTag: reg['idPrefix'] == 'swargate' ? 'swgt' : reg['idPrefix'],
+          );
+          await _seedOfficer(
+            empId: (dept['prefix'] + _empCounter++).toString(),
+            dept: dept,
+            hier: l4,
+            officeName: reg['name'],
+            divisionId: divId,
+            circleId: circleId,
+            regionId: regionId,
+            emailTag: reg['idPrefix'] == 'swargate' ? 'swgt' : reg['idPrefix'],
+          );
+
+          var regOffices = officesGeo.where((o) => o['region'] == reg['idPrefix']).toList();
+          for (var off in regOffices) {
+             String offId = "off_${off['idPrefix']}_${dept['id']}";
+             await _firestore.collection('OFFICES').doc(offId).set({
+                'officeId': offId, 'regionId': regionId, 'name': off['name'],
+                'latitude': off['lat'], 'longitude': off['lng'], 'radiusKm': off['radius'], 'departmentId': dept['id']
+             });
+
+             final l3 = dept['hier'].firstWhere((h) => h['level'] == 3);
+             final l2 = dept['hier'].firstWhere((h) => h['level'] == 2);
+             final l1 = dept['hier'].firstWhere((h) => h['level'] == 1);
+             final isSwargate = off['idPrefix'] == 'swgt';
+             final officeTag = isSwargate ? 'swgt' : off['idPrefix'];
+             await _seedOfficer(
+               empId: (dept['prefix'] + _empCounter++).toString(),
+               dept: dept,
+               hier: l3,
+               officeName: off['name'],
+               divisionId: divId,
+               circleId: circleId,
+               regionId: regionId,
+               officeId: offId,
+               officePrefix: officeTag,
+               emailTag: officeTag,
+             );
+             await _seedOfficer(
+               empId: (dept['prefix'] + _empCounter++).toString(),
+               dept: dept,
+               hier: l2,
+               officeName: off['name'],
+               divisionId: divId,
+               circleId: circleId,
+               regionId: regionId,
+               officeId: offId,
+               officePrefix: officeTag,
+               emailTag: officeTag,
+             );
+             await _seedOfficer(
+               empId: (dept['prefix'] + _empCounter++).toString(),
+               dept: dept,
+               hier: l1,
+               officeName: off['name'],
+               divisionId: divId,
+               circleId: circleId,
+               regionId: regionId,
+               officeId: offId,
+               officePrefix: officeTag,
+               emailTag: officeTag,
+             );
+          }
+        }
+      }
+    }
+    print("Seeding Hierarchies Complete.");
   }
 
-  // From Previous Steps: seedComplaintTypes
+  static final List<String> _firstNames = [
+    'Sanjay', 'Milind', 'Pravin', 'Sachin', 'Rohit', 'Amol', 'Kunal',
+    'Anil', 'Vijay', 'Rohan', 'Mahesh', 'Suresh', 'Rahul', 'Amit',
+    'Nilesh', 'Dilip', 'Santosh', 'Umesh', 'Prakash', 'Sunil', 'Rajesh',
+    'Smita', 'Priya', 'Sneha', 'Anita', 'Kavita', 'Pooja', 'Sheetal',
+    'Ganesh', 'Yogesh', 'Tushar', 'Deepak', 'Sandeep', 'Swapnil', 'Ajay',
+    'Akshay', 'Prashant', 'Neha', 'Sonali', 'Pallavi', 'Rupali', 'Sayali',
+    'Pratik', 'Tejas', 'Ravi', 'Kiran', 'Vishal', 'Nitin', 'Manoj'
+  ];
+
+  static final List<String> _lastNames = [
+    'Patil', 'Deshmukh', 'Kulkarni', 'Joshi', 'Bhosale', 'Jadhav',
+    'Desai', 'Phadke', 'Chavan', 'Pawar', 'Gokhale', 'More', 'Kadam',
+    'Shinde', 'Gaikwad', 'Kamble', 'Kale', 'Mane', 'Wagh', 'Thakare',
+    'Raut', 'Chaudhari', 'Sutar', 'Naik', 'Satpute', 'Shirke', 'Surve',
+    'Kharat', 'Sawant', 'Sable', 'Bapat', 'Ranade', 'Godbole', 'Kelkar',
+    'Mundhe', 'Dhumal', 'Kakade', 'Magar', 'Mahadik', 'Pimpale'
+  ];
+
+  String _getRandomName() {
+    final rand = Random();
+    String first = _firstNames[rand.nextInt(_firstNames.length)];
+    String last = _lastNames[rand.nextInt(_lastNames.length)];
+    return "$first $last";
+  }
+
+  Future<void> _seedOfficer({
+      required String empId, 
+      required Map<String, dynamic> dept, 
+      required Map<String, dynamic> hier, 
+      required String officeName,
+      String? divisionId, String? circleId, String? regionId, String? officeId, String officePrefix = 'hq'
+      , String? emailTag
+  }) async {
+      String name = _getRandomName();
+      String shortNameLow = dept['shortName'].toString().toLowerCase().replaceAll('-', '_');
+      String emailSuffix = (emailTag != null && emailTag.isNotEmpty) ? emailTag : officePrefix;
+      String email = emailTag != null && emailTag.isNotEmpty
+        ? "${hier['role']}_${emailSuffix.toLowerCase()}@civiccore.pune.gov.in"
+        : "${hier['role']}_${officePrefix}_$shortNameLow@civiccore.pune.gov.in";
+      String password = "123456";
+
+      String uid = _firestore.collection('USERS').doc().id;
+      final user = UserModel(
+        userId: uid,
+        name: name,
+        email: email,
+        phone: '9800000000',
+        role: hier['role'],
+        designation: hier['title'],
+        divisionId: divisionId,
+        circleId: circleId,
+        regionId: regionId,
+        officeId: officeId,
+        createdAt: DateTime.now(),
+        isActive: true,
+      );
+
+      Map<String, dynamic> uMap = user.toMap();
+      uMap['employeeId'] = empId;
+      uMap['password'] = password;
+      uMap['level'] = hier['level'];
+      uMap['departmentId'] = dept['id'];
+
+      await _firestore.collection('USERS').doc(user.userId).set(uMap);
+  }
+
   Future<void> seedComplaintTypes() async {
     print("Seeding Complaint Types with Priority...");
-    final List<String> csvLines = [
-"Forest Fire,E (Critical),1 min,2 min",
-"Noise from transformer,A1 (High),1 hour,6 hours",
-"Major blackout in entire colony,E (Critical),15 minutes,2 hours",
-"Loose wire hanging without danger,A3 (Low),12 hours,72 hours",
-"Wires hanging low on street,A2 (Medium),6 hours,24 hours",
-"Frequent voltage fluctuation in house,A1 (High),1 hour,6 hours",
-"Complaint of high bill without usage,A3 (Low),12 hours,72 hours",
-"Fuse blown at transformer,A1 (High),1 hour,6 hours",
-"Loose connection at electric pole,A1 (High),1 hour,6 hours",
-"Old wooden electric pole needs replacement,A3 (Low),12 hours,72 hours",
-"Electric pole fallen on road,E (Critical),15 minutes,2 hours",
-"School building exposed to live wires,E (Critical),15 minutes,2 hours",
-"Sparking in electric substation,E (Critical),15 minutes,2 hours",
-"High voltage fluctuation risking appliances,E (Critical),15 minutes,2 hours",
-"Street lights flickering in entire lane,A1 (High),1 hour,6 hours",
-"One or two houses without power,A2 (Medium),6 hours,24 hours",
-"Electric bill not generated,A3 (Low),12 hours,72 hours",
-"Single phase outage in colony,A1 (High),1 hour,6 hours",
-"Need new street light installation,A3 (Low),12 hours,72 hours",
-"Street light wire cut,A2 (Medium),6 hours,24 hours",
-"Transformer blast in the area,E (Critical),15 minutes,2 hours",
-"Power cut during daytime,A2 (Medium),6 hours,24 hours",
-"Phase imbalance in area,A1 (High),1 hour,6 hours",
-"Meter reading not updated,A3 (Low),12 hours,72 hours",
-"Low voltage supply at night,A2 (Medium),6 hours,24 hours",
-"Fan speed very low due to low supply,A2 (Medium),6 hours,24 hours",
-"Damaged meter causing sparks,A1 (High),1 hour,6 hours",
-"Sudden outage in half of the colony,A1 (High),1 hour,6 hours",
-"Electric pole rusted,A3 (Low),12 hours,72 hours",
-"Meter box broken cover,A2 (Medium),6 hours,24 hours",
-"Appliances damaged due to fluctuations,A2 (Medium),6 hours,24 hours",
-"Burning smell from transformer,E (Critical),15 minutes,2 hours",
-"Water pump not working due to electric fault,A1 (High),1 hour,6 hours",
-"Hospital power outage,E (Critical),15 minutes,2 hours",
-"Street light cover missing,A3 (Low),12 hours,72 hours",
-"Frequent power cuts in evening,A2 (Medium),6 hours,24 hours",
-"Tree branches touching electric wire (no sparks),A3 (Low),12 hours,72 hours",
-"Electric fire due to short circuit,E (Critical),15 minutes,2 hours",
-"Street light not working,A2 (Medium),6 hours,24 hours",
-"Live wire in water puddle,E (Critical),15 minutes,2 hours",
-"Small fuse replacement required,A3 (Low),12 hours,72 hours",
-"Transformer oil leakage,E (Critical),15 minutes,2 hours",
-"Transformer overheating,E (Critical),15 minutes,2 hours",
-"Distribution box open and unsafe,A3 (Low),12 hours,72 hours",
-"Street light pole rusted and unstable,A2 (Medium),6 hours,24 hours",
-"Electric meter sparking,E (Critical),15 minutes,2 hours",
-"Meter seal broken,A2 (Medium),6 hours,24 hours",
-"Power supply tripping repeatedly,A1 (High),1 hour,6 hours",
-"Cable joint damaged,A3 (Low),12 hours,72 hours",
-"Underground cable fault,A3 (Low),12 hours,72 hours",
-"Overloaded transformer in area,A3 (Low),12 hours,72 hours",
-"Electric pole leaning dangerously,A2 (Medium),6 hours,24 hours",
-"Tree branches touching power lines,A3 (Low),12 hours,72 hours",
-"Substation fence damaged,E (Critical),15 minutes,2 hours",
-"Unauthorized load causing outage,A1 (High),1 hour,6 hours",
-"Phase failure in locality,A1 (High),1 hour,6 hours",
-"Power surge damaging appliances,A1 (High),1 hour,6 hours",
-"Frequent fuse burnouts,A3 (Low),12 hours,72 hours",
-"Service line snapped,E (Critical),15 minutes,2 hours",
-"Water leakage near electric cables,A3 (Low),12 hours,72 hours",
-"Open junction box on roadside,A2 (Medium),6 hours,24 hours"
+    final List<Map<String, dynamic>> rawData = [
+      {'category':'Garbage', 'subtype':'Garbage not collected', 'priority':'High', 'slaHours':12, 'keywords':['garbage not collected'], 'synonyms':['waste not picked','trash not collected'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Overflowing garbage bin', 'priority':'High', 'slaHours':8, 'keywords':['overflowing bin'], 'synonyms':['full dustbin','bin full'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Garbage pile on road', 'priority':'High', 'slaHours':8, 'keywords':['garbage pile'], 'synonyms':['trash heap','waste pile'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Illegal dumping', 'priority':'High', 'slaHours':6, 'keywords':['illegal dumping'], 'synonyms':['unauthorized waste'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Bad smell from garbage', 'priority':'Medium', 'slaHours':24, 'keywords':['bad smell garbage'], 'synonyms':['foul smell waste'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Mosquitoes due to garbage', 'priority':'High', 'slaHours':12, 'keywords':['mosquito garbage'], 'synonyms':['insects from waste'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Construction waste dump', 'priority':'High', 'slaHours':12, 'keywords':['construction waste'], 'synonyms':['debris dump'], 'departmentId':'dept_garbage'},
+      {'category':'Garbage', 'subtype':'Street not cleaned', 'priority':'Medium', 'slaHours':24, 'keywords':['street not cleaned'], 'synonyms':['road not swept'], 'departmentId':'dept_garbage'},
+      {'category':'Water', 'subtype':'Water leakage pipe', 'priority':'High', 'slaHours':6, 'keywords':['water leakage','pipe leak'], 'synonyms':['water seeping'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Pipe burst', 'priority':'Critical', 'slaHours':2, 'keywords':['pipe burst'], 'synonyms':['major leak','pipeline broken'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'No water supply', 'priority':'High', 'slaHours':12, 'keywords':['no water supply'], 'synonyms':['water not coming'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Low water pressure', 'priority':'Medium', 'slaHours':24, 'keywords':['low pressure'], 'synonyms':['slow water flow'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Contaminated water', 'priority':'Critical', 'slaHours':4, 'keywords':['dirty water'], 'synonyms':['muddy water','smelly water'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Overflowing tank', 'priority':'Medium', 'slaHours':12, 'keywords':['tank overflow'], 'synonyms':['water overflow tank'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Water logging', 'priority':'High', 'slaHours':6, 'keywords':['water logging'], 'synonyms':['stagnant water'], 'departmentId':'dept_water'},
+      {'category':'Water', 'subtype':'Illegal water connection', 'priority':'Medium', 'slaHours':24, 'keywords':['illegal connection'], 'synonyms':['water theft'], 'departmentId':'dept_water'},
+      {'category':'Roads', 'subtype':'Pothole on road', 'priority':'High', 'slaHours':12, 'keywords':['pothole'], 'synonyms':['road hole','crater'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Multiple potholes', 'priority':'High', 'slaHours':8, 'keywords':['many potholes'], 'synonyms':['road full holes'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Road surface broken', 'priority':'High', 'slaHours':12, 'keywords':['road broken'], 'synonyms':['damaged road'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Road caved in', 'priority':'Critical', 'slaHours':4, 'keywords':['road collapse'], 'synonyms':['sinkhole'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Footpath broken', 'priority':'Medium', 'slaHours':24, 'keywords':['broken footpath'], 'synonyms':['damaged walkway'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Open manhole', 'priority':'Critical', 'slaHours':2, 'keywords':['open manhole'], 'synonyms':['manhole open'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Road digging not restored', 'priority':'High', 'slaHours':12, 'keywords':['road digging'], 'synonyms':['construction not fixed'], 'departmentId':'dept_roads'},
+      {'category':'Roads', 'subtype':'Debris on road', 'priority':'Medium', 'slaHours':24, 'keywords':['road debris'], 'synonyms':['stones on road'], 'departmentId':'dept_roads'},
+      {'category':'Streetlight', 'subtype':'Streetlight not working', 'priority':'High', 'slaHours':12, 'keywords':['light not working'], 'synonyms':['streetlight off'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Multiple lights not working', 'priority':'High', 'slaHours':8, 'keywords':['many lights off'], 'synonyms':['area dark'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Flickering light', 'priority':'Medium', 'slaHours':24, 'keywords':['flickering light'], 'synonyms':['blinking light'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Dim streetlight', 'priority':'Medium', 'slaHours':24, 'keywords':['low light'], 'synonyms':['poor lighting'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Broken pole', 'priority':'Critical', 'slaHours':4, 'keywords':['broken pole'], 'synonyms':['fallen pole'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Hanging wires', 'priority':'Critical', 'slaHours':2, 'keywords':['hanging wire'], 'synonyms':['electric risk'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Loose connection', 'priority':'High', 'slaHours':8, 'keywords':['loose wire'], 'synonyms':['connection issue'], 'departmentId':'dept_electricity'},
+      {'category':'Streetlight', 'subtype':'Dark area', 'priority':'High', 'slaHours':12, 'keywords':['dark street'], 'synonyms':['no lighting area'], 'departmentId':'dept_electricity'},
+      {'category':'Drainage', 'subtype':'Choked drain', 'priority':'High', 'slaHours':8, 'keywords':['choked drain'], 'synonyms':['blocked drain'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Open drain', 'priority':'High', 'slaHours':12, 'keywords':['open drain'], 'synonyms':['exposed drainage'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Sewage overflow', 'priority':'Critical', 'slaHours':4, 'keywords':['sewage overflow'], 'synonyms':['drain overflow'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Drain blockage due to garbage', 'priority':'High', 'slaHours':8, 'keywords':['drain blocked garbage'], 'synonyms':['garbage clog drain'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Water stagnation', 'priority':'High', 'slaHours':6, 'keywords':['stagnant water'], 'synonyms':['water accumulation'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Drain cover missing', 'priority':'Critical', 'slaHours':2, 'keywords':['drain cover missing'], 'synonyms':['open drain hole'], 'departmentId':'dept_water'},
+      {'category':'Drainage', 'subtype':'Drain smell', 'priority':'Medium', 'slaHours':24, 'keywords':['drain smell'], 'synonyms':['bad odor drain'], 'departmentId':'dept_water'},
+      {'category':'Safety', 'subtype':'Open manhole hazard', 'priority':'Critical', 'slaHours':2, 'keywords':['open manhole'], 'synonyms':['danger hole'], 'departmentId':'dept_electricity'},
+      {'category':'Safety', 'subtype':'Hanging electric wire', 'priority':'Critical', 'slaHours':2, 'keywords':['hanging wire'], 'synonyms':['electric risk'], 'departmentId':'dept_electricity'},
+      {'category':'Safety', 'subtype':'Construction hazard', 'priority':'Critical', 'slaHours':4, 'keywords':['construction unsafe'], 'synonyms':['no barricade'], 'departmentId':'dept_electricity'},
+      {'category':'Safety', 'subtype':'Exposed cables', 'priority':'Critical', 'slaHours':2, 'keywords':['exposed wire'], 'synonyms':['electric cable open'], 'departmentId':'dept_electricity'},
+      {'category':'Safety', 'subtype':'Fire hazard', 'priority':'Critical', 'slaHours':2, 'keywords':['fire risk'], 'synonyms':['flammable danger'], 'departmentId':'dept_electricity'},
+      {'category':'Encroachment', 'subtype':'Illegal street encroachment', 'priority':'Medium', 'slaHours':48, 'keywords':['encroachment'], 'synonyms':['illegal structure'], 'departmentId':'dept_garbage'},
+      {'category':'Encroachment', 'subtype':'Footpath blocked', 'priority':'Medium', 'slaHours':48, 'keywords':['footpath blocked'], 'synonyms':['walking path blocked'], 'departmentId':'dept_garbage'},
+      {'category':'Encroachment', 'subtype':'Construction material on road', 'priority':'Medium', 'slaHours':48, 'keywords':['construction material'], 'synonyms':['road blocked materials'], 'departmentId':'dept_garbage'},
+      {'category':'Encroachment', 'subtype':'Illegal parking blockage', 'priority':'Medium', 'slaHours':48, 'keywords':['illegal parking'], 'synonyms':['vehicle blockage'], 'departmentId':'dept_garbage'},
+      {'category':'Infrastructure', 'subtype':'Public toilet dirty', 'priority':'Medium', 'slaHours':24, 'keywords':['toilet dirty'], 'synonyms':['unclean toilet'], 'departmentId':'dept_garbage'},
+      {'category':'Infrastructure', 'subtype':'Public toilet not working', 'priority':'High', 'slaHours':12, 'keywords':['toilet not working'], 'synonyms':['facility broken'], 'departmentId':'dept_garbage'},
+      {'category':'Infrastructure', 'subtype':'Broken bench', 'priority':'Low', 'slaHours':48, 'keywords':['bench broken'], 'synonyms':['seat damaged'], 'departmentId':'dept_garbage'},
+      {'category':'Infrastructure', 'subtype':'Bus stop damaged', 'priority':'Medium', 'slaHours':24, 'keywords':['bus stop broken'], 'synonyms':['damaged shelter'], 'departmentId':'dept_garbage'},
+      {'category':'Infrastructure', 'subtype':'Public tap not working', 'priority':'Medium', 'slaHours':24, 'keywords':['public tap issue'], 'synonyms':['tap broken'], 'departmentId':'dept_garbage'},
+      {'category':'Animals', 'subtype':'Stray dogs', 'priority':'Medium', 'slaHours':24, 'keywords':['stray dogs'], 'synonyms':['street dogs'], 'departmentId':'dept_garbage'},
+      {'category':'Animals', 'subtype':'Stray cattle', 'priority':'Medium', 'slaHours':24, 'keywords':['stray cattle'], 'synonyms':['loose cows'], 'departmentId':'dept_garbage'},
+      {'category':'Animals', 'subtype':'Dead animal removal', 'priority':'High', 'slaHours':8, 'keywords':['dead animal'], 'synonyms':['carcass removal'], 'departmentId':'dept_garbage'},
+      {'category':'Governance', 'subtype':'Complaint not resolved', 'priority':'High', 'slaHours':12, 'keywords':['not resolved'], 'synonyms':['no action taken'], 'departmentId':'dept_garbage'},
+      {'category':'Governance', 'subtype':'Wrongly closed complaint', 'priority':'High', 'slaHours':12, 'keywords':['wrong closure'], 'synonyms':['closed incorrectly'], 'departmentId':'dept_garbage'},
+      {'category':'Governance', 'subtype':'Poor quality repair', 'priority':'Medium', 'slaHours':24, 'keywords':['poor repair'], 'synonyms':['bad work quality'], 'departmentId':'dept_garbage'},
+      {'category':'Governance', 'subtype':'Repeated issue', 'priority':'High', 'slaHours':12, 'keywords':['repeated problem'], 'synonyms':['issue again'], 'departmentId':'dept_garbage'},
+      {'category':'Health', 'subtype':'Disease outbreak suspected', 'priority':'Critical', 'slaHours':2, 'keywords':['disease outbreak','epidemic'], 'synonyms':['illness spreading'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Fever cluster in area', 'priority':'Critical', 'slaHours':4, 'keywords':['fever spreading','dengue'], 'synonyms':['multiple fever cases'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Mosquito breeding', 'priority':'High', 'slaHours':8, 'keywords':['mosquito breeding','malaria risk'], 'synonyms':['larva found'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Food poisoning', 'priority':'Critical', 'slaHours':2, 'keywords':['food poisoning'], 'synonyms':['food contamination'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Dead animal health risk', 'priority':'High', 'slaHours':6, 'keywords':['dead animal smell','carcass'], 'synonyms':['decomposing animal'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Illegal slaughter', 'priority':'High', 'slaHours':8, 'keywords':['illegal slaughter','slaughterhouse'], 'synonyms':['unlicensed meat'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Vaccination camp needed', 'priority':'Medium', 'slaHours':48, 'keywords':['vaccination','immunization'], 'synonyms':['health camp'], 'departmentId':'dept_health'},
+      {'category':'Health', 'subtype':'Hospital / clinic complaint', 'priority':'High', 'slaHours':12, 'keywords':['hospital complaint','clinic issue'], 'synonyms':['medical facility problem'], 'departmentId':'dept_health'}
     ];
 
     WriteBatch batch = _firestore.batch();
-    int count = 0;
-
-    for (String line in csvLines) {
-      List<String> parts = line.split(',');
-      if (parts.length >= 4) {
-        String title = parts[0].trim();
-        String cat = parts[1].trim();
-        String slaResp = parts[2].trim();
-        String slaReso = parts[3].trim();
-
-        String priority = 'Medium';
-        if (cat.contains('Critical')) priority = 'Critical';
-        else if (cat.contains('High')) priority = 'High';
-        else if (cat.contains('Low')) priority = 'Low';
-        
-        ComplaintTypeModel model = ComplaintTypeModel(
-          title: title,
-          category: cat,
-          priority: priority,
-          slaResponse: slaResp,
-          slaResolution: slaReso,
-        );
-        
-        DocumentReference ref = _firestore.collection('COMPLAINT_TYPES').doc();
-        batch.set(ref, model.toMap());
-        count++;
-      }
+    for (var raw in rawData) {
+      DocumentReference ref = _firestore.collection('COMPLAINT_TYPES').doc();
+      ComplaintTypeModel model = ComplaintTypeModel(
+         id: ref.id,
+         category: raw['category'],
+         subtype: raw['subtype'],
+         priority: raw['priority'],
+         slaHours: raw['slaHours'],
+         keywords: List<String>.from(raw['keywords']),
+         synonyms: List<String>.from(raw['synonyms']),
+         departmentId: raw['departmentId'],
+      );
+      batch.set(ref, model.toMap());
     }
-    
     await batch.commit();
-    print("Seeded $count Complaint Types.");
+    print("Seeded ${rawData.length} Complaint Types.");
   }
 }
-
-class _OfficeSeed {
-  final String id;
-  final String name;
-  final String jeId;
-  final String jeName;
-  final String jeEmail;
-  final String aeId;
-  final String aeName;
-  final String aeEmail;
-  final List<String> foData; // [id, name, email...]
-  final String? admin;
-  final String? adminName;
-  final String? adminEmail;
-  final double lat;
-  final double lng;
-
-  _OfficeSeed(this.id, this.name, this.jeId, this.jeName, this.jeEmail, 
-      this.aeId, this.aeName, this.aeEmail, this.foData, 
-      {this.admin, this.adminName, this.adminEmail, this.lat = 18.52, this.lng = 73.85});
-}
-
-

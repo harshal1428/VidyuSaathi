@@ -9,7 +9,7 @@ void main() {
   //   options: DefaultFirebaseOptions.currentPlatform,
   // );
   
-  runApp(const MahavitranApp(
+  runApp(const Pune Municipal CorporationApp(
     // Change startMode to test different flows:
     // 'auth' - Start with login screen (production)
     // 'admin' - Jump to admin dashboard

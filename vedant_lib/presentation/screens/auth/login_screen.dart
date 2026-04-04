@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Builds the Mahavitran logo widget with fallback
+  /// Builds the Pune Municipal Corporation logo widget with fallback
   Widget _buildLogo(BuildContext context) {
     return Image.asset(
       'assets/images/logo.png',

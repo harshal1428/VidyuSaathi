@@ -47,7 +47,7 @@ class _AEDashboardSectionState extends State<AEDashboardSection> {
           
           // Recent Critical / Escalated
            StreamBuilder<List<TicketModel>>(
-            stream: dbService.getOfficerTickets(user, status: 'Escalated'), 
+            stream: dbService.getOpenEscalatedTickets(user), 
             builder: (context, snapshot) {
               final tickets = snapshot.data ?? [];
               final criticalTickets = tickets.where((t) => t.priority == 'Critical' || t.status == 'Escalated').take(3).toList();
@@ -165,6 +165,32 @@ class _AEDashboardSectionState extends State<AEDashboardSection> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  title: 'In Progress',
+                  value: '${stats.inProgress}',
+                  icon: Icons.hourglass_top,
+                  color: Colors.blue,
+                  isDark: isDark,
+                  onTap: () => _navigateToTickets(status: 'In Progress'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  title: 'Escalated',
+                  value: '${stats.escalated}',
+                  icon: Icons.upload,
+                  color: Colors.red,
+                  isDark: isDark,
+                  onTap: () => _navigateToTickets(status: 'Escalated'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -188,7 +214,7 @@ class _AEDashboardSectionState extends State<AEDashboardSection> {
             if (staff.isEmpty) const Text("No team members found."),
             ...staff.map((s) => ListTile(
             title: Text(s.name),
-            subtitle: Text(s.designation ?? s.role ?? ''),
+            subtitle: Text(s.designation ?? s.role),
             leading: CircleAvatar(child: Text(s.name.isNotEmpty ? s.name[0] : 'U')),
              contentPadding: EdgeInsets.zero,
              trailing: const Icon(Icons.info_outline, size: 20),
@@ -226,7 +252,8 @@ class _AEDashboardSectionState extends State<AEDashboardSection> {
      if (status == 'Pending') type = 'pending';
      else if (status == 'In Progress') type = 'in_progress';
      else if (status == 'Resolved') type = 'completed';
-     else if (status == 'Critical') type = 'critical'; // TaskManagementScreen might need update for this, but keeping safe
+      else if (status == 'Escalated') type = 'escalated';
+      else if (status == 'Critical') type = 'critical';
 
      Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': type}); 
   }

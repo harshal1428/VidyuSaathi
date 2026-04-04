@@ -114,7 +114,7 @@ userRole = widget.initialUserRole ?? 'JE';  // Change to: 'AE', 'DYEE', 'EE', 'S
 Or pass it when running the app in `lib/main.dart`:
 
 ```dart
-runApp(const MahavitranApp(
+runApp(const Pune Municipal CorporationApp(
   initialUserRole: 'SE',  // Change role here
   initialUserName: 'Demo User',
 ));

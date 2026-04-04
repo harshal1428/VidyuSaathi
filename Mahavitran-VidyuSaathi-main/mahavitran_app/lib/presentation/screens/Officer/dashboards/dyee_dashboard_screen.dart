@@ -5,7 +5,7 @@ import '../sections/dyee_dashboard_section.dart';
 import '../../../widgets/common/role_switcher.dart';
 import '../../../provider/admin/theme_provider.dart';
 import '../../../constants/app_colors.dart';
-import 'package:mahavitran_app/presentation/widgets/officer/officer_sidebar.dart';
+import 'package:civic_core/presentation/widgets/officer/officer_sidebar.dart';
 
 /// Deputy Executive Engineer Dashboard Screen
 /// Division management focused - subdivision overview, team management, SLA metrics, escalations

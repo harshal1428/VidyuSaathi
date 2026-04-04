@@ -14,16 +14,13 @@ class _SeederScreenState extends State<SeederScreen> {
   
   // Data for Display Only (Verification)
   final List<Map<String, String>> _hierarchyData = [
-    {'Role': 'CE', 'ID': '10000001', 'Name': 'Sanjay Patil', 'Loc': 'Pune HQ'},
-    {'Role': 'SE', 'ID': '10000002', 'Name': 'Milind Deshmukh', 'Loc': 'Circle 1'},
-    {'Role': 'EE', 'ID': '10000003', 'Name': 'Pravin Kulkarni', 'Loc': 'Region 1'},
-    {'Role': 'DyEE', 'ID': '10000004', 'Name': 'Sachin Joshi', 'Loc': 'Region 1'},
-    {'Role': 'JE', 'ID': '10000005', 'Name': 'Rohit Bhosale', 'Loc': 'Office 1'},
-    {'Role': 'AE', 'ID': '10000006', 'Name': 'Amol Jadhav', 'Loc': 'Office 1'},
-    {'Role': 'JE', 'ID': '10000016', 'Name': 'Kunal Desai', 'Loc': 'Office 4 (Reg 2)'},
-    {'Role': 'SE', 'ID': '10000019', 'Name': 'Anil Phadke', 'Loc': 'Circle 2'},
-    {'Role': 'EE', 'ID': '10000020', 'Name': 'Vijay Chavan', 'Loc': 'Region 3'},
-    {'Role': 'JE', 'ID': '10000035', 'Name': 'Rohan Pawar', 'Loc': 'Office 8 (Reg 4)'},
+    {'Role': 'CE', 'ID': 'ce_elec_pune@civiccore.pune.gov.in', 'Name': 'Chief Engineer', 'Loc': 'Pune Zone'},
+    {'Role': 'SE', 'ID': 'se_elec_urbn@civiccore.pune.gov.in', 'Name': 'Superintending Engineer', 'Loc': 'Pune Urban Circle'},
+    {'Role': 'EE', 'ID': 'ee_elec_swgt@civiccore.pune.gov.in', 'Name': 'Executive Engineer', 'Loc': 'Swargate Region'},
+    {'Role': 'DyEE', 'ID': 'dee_elec_swgt@civiccore.pune.gov.in', 'Name': 'Deputy Executive Engineer', 'Loc': 'Swargate Region'},
+    {'Role': 'AE', 'ID': 'ae_elec_swgt@civiccore.pune.gov.in', 'Name': 'Assistant Engineer', 'Loc': 'Swargate Division Office'},
+    {'Role': 'JE', 'ID': 'je_elec_swgt@civiccore.pune.gov.in', 'Name': 'Junior Engineer', 'Loc': 'Swargate Division Office'},
+    {'Role': 'L1', 'ID': 'lineman_swgt@civiccore.pune.gov.in', 'Name': 'Lineman', 'Loc': 'Swargate Division Office'},
   ];
 
   void _runSeeder() async {
@@ -34,10 +31,10 @@ class _SeederScreenState extends State<SeederScreen> {
 
     try {
       final seeder = SeederService();
-      await seeder.seedHierarchicalData();
+      await seeder.performSafetyCheckAndSeed(context);
       
       setState(() {
-        _status = 'Success! Full Structure (Pune Division) seeded.\n\nCREATE AUTH ACCOUNTS MANUALLY (Password 123456).';
+        _status = 'Success! Seeding Process finished.\n\nLogin with employee ID accounts or seeded officer emails (Password 123456).';
       });
     } catch (e) {
       setState(() {
@@ -64,26 +61,7 @@ class _SeederScreenState extends State<SeederScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : _runSeeder,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Seed Full Hierarchy (Pune)'),
-            ),
-            const SizedBox(height: 16),
-             ElevatedButton(
-              onPressed: _isLoading ? null : () async {
-                 setState(() {
-                  _isLoading = true;
-                  _status = 'Seeding Complaints...';
-                });
-                try {
-                  await SeederService().seedHierarchicalData();
-                  await SeederService().seedComplaintTypes();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Seeding Complete!")));
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-                } finally {
-                  setState(() => _isLoading = false);
-                }
-              },
-              child: _isLoading ? const CircularProgressIndicator() : const Text("Run Database Seeder"),
+              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Run Full CivicCore Seeder'),
             ),
             const SizedBox(height: 24),
             if (_status.isNotEmpty) ...[

@@ -1,6 +1,6 @@
 class AppConstants {
-  static const String appName = 'VidyuSaathi';
-  static const String organizationName = 'Mahavitran';
+  static const String appName = 'NagarSetu';
+  static const String organizationName = 'Pune Municipal Corporation';
   
   // Roles
   static const String roleCitizen = 'CITIZEN';

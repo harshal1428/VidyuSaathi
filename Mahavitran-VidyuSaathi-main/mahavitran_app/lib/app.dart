@@ -34,9 +34,9 @@ import 'data/services/auth/auth_service.dart';
 // Constants
 import 'core/constants/app_constants.dart';
 
-/// Mahavitran VidyuSaathi Main Application
+/// Pune Municipal Corporation CivicCore Main Application
 /// Unified app with auth flow, citizen screens, officer dashboards, and admin panel
-class MahavitranApp extends StatelessWidget {
+class Pune Municipal CorporationApp extends StatelessWidget {
   /// Start mode determines initial screen:
   /// - 'auth': Start with login/home page (default for production)
   /// - 'admin': Jump directly to admin dashboard (for testing)
@@ -46,7 +46,7 @@ class MahavitranApp extends StatelessWidget {
   final String? initialUserRole;
   final String? initialUserName;
 
-  const MahavitranApp({
+  const Pune Municipal CorporationApp({
     Key? key,
     this.startMode = 'admin',
     this.initialUserRole,
@@ -66,7 +66,7 @@ class MahavitranApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
-            title: 'Mahavitran VidyuSaathi',
+            title: 'Pune Municipal Corporation CivicCore',
             debugShowCheckedModeBanner: false,
             theme: _buildLightTheme(),
             darkTheme: AppTheme.darkTheme,

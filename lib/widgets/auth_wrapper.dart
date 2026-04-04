@@ -31,9 +31,10 @@ class AuthWrapper extends StatelessWidget {
 
     if (authService.currentUser != null) {
       final role = authService.currentUser!.role;
+      final designation = authService.currentUser!.designation;
       if (role == AppConstants.roleCitizen) {
         return const CitizenDashboard();
-      } else if (role == AppConstants.roleAdmin) {
+      } else if (role == AppConstants.roleAdmin || role == 'OFFICE_ADMIN' || designation == 'Admin') {
         return const AdminHomeScreen();
       } else {
         // Assume Officer (role == 'OFFICER' or specific designation)

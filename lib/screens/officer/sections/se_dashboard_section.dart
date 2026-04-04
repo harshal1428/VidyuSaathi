@@ -47,7 +47,7 @@ class _SEDashboardSectionState extends State<SEDashboardSection> {
            
            // Circle Escalations
            StreamBuilder<List<TicketModel>>(
-            stream: dbService.getOfficerTickets(user, status: 'Escalated'), 
+            stream: dbService.getOpenEscalatedTickets(user), 
             builder: (context, snapshot) {
               final tickets = snapshot.data ?? [];
               final criticalTickets = tickets.where((t) => t.priority == 'Critical' || t.status == 'Escalated').take(3).toList();

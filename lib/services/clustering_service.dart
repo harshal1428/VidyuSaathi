@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
@@ -14,14 +15,104 @@ class ClusteringService {
   static const int TIME_WINDOW_HOURS = 24; // Cluster tickets within 24h
 
   /// Main entry point to process a new ticket for clustering
+  Future<Map<String, dynamic>> checkAndCluster(Map<String, dynamic> ticketData) async {
+    double? lat = ticketData['latitude'];
+    double? lng = ticketData['longitude'];
+    if (lat == null || lng == null) return {'clusterSize': 1, 'clusterId': ''};
+
+    String deptId = ticketData['departmentId'] ?? '';
+    String title = ticketData['title'] ?? '';
+    String ticketId = ticketData['ticketId'] ?? '';
+    DateTime createdAt = ticketData['createdAt'] is Timestamp 
+                            ? (ticketData['createdAt'] as Timestamp).toDate() 
+                            : ticketData['createdAt'] as DateTime;
+
+    try {
+      final query = await _firestore.collection('CLUSTERS')
+          .where('status', isEqualTo: 'Active')
+          .where('departmentId', isEqualTo: deptId)
+          .get();
+
+      final clusters = query.docs
+          .map((doc) => ComplaintClusterModel.fromMap(doc.data()))
+          .toList();
+
+      ComplaintClusterModel? bestMatch;
+      double minDistance = double.infinity;
+
+      for (var cluster in clusters) {
+        if (!_isTitleSimilar(cluster.title, title)) continue;
+        Duration timeDiff = createdAt.difference(cluster.createdAt).abs();
+        if (timeDiff.inHours > TIME_WINDOW_HOURS) continue;
+
+        double distance = Geolocator.distanceBetween(lat, lng, cluster.centroidLatitude, cluster.centroidLongitude);
+
+        if (distance <= CLUSTER_RADIUS_METERS) {
+          if (distance < minDistance) {
+            minDistance = distance;
+            bestMatch = cluster;
+          }
+        }
+      }
+
+      int clusterSize = 1;
+      String clusterId;
+
+      if (bestMatch != null) {
+        clusterSize = bestMatch.ticketCount + 1;
+        clusterId = bestMatch.clusterId;
+
+        int newCount = bestMatch.ticketCount + 1;
+        double newLat = ((bestMatch.centroidLatitude * bestMatch.ticketCount) + lat) / newCount;
+        double newLong = ((bestMatch.centroidLongitude * bestMatch.ticketCount) + lng) / newCount;
+
+        await _firestore.collection('CLUSTERS').doc(bestMatch.clusterId).update({
+          'ticketIds': FieldValue.arrayUnion([ticketId]),
+          'ticketCount': newCount,
+          'centroidLatitude': newLat,
+          'centroidLongitude': newLong,
+          'lastUpdatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        clusterId = "CLS-${_uuid.v4().substring(0, 8).toUpperCase()}";
+        ComplaintClusterModel newCluster = ComplaintClusterModel(
+          clusterId: clusterId,
+          centroidLatitude: lat,
+          centroidLongitude: lng,
+          radiusMeters: CLUSTER_RADIUS_METERS,
+          title: title,
+          ticketIds: [ticketId],
+          createdAt: DateTime.now(),
+          lastUpdatedAt: DateTime.now(),
+          status: 'Active',
+          ticketCount: 1,
+        );
+        Map<String, dynamic> clusterDoc = newCluster.toMap();
+        clusterDoc['departmentId'] = deptId;
+        await _firestore.collection('CLUSTERS').doc(clusterId).set(clusterDoc);
+      }
+
+      return {'clusterSize': clusterSize, 'clusterId': clusterId};
+    } catch (e) {
+      print("Error in checkAndCluster: $e");
+      return {'clusterSize': 1, 'clusterId': ''};
+    }
+  }
+
+  /// Old legacy entry point
   Future<void> processTicketForClustering(TicketModel ticket) async {
     if (ticket.latitude == null || ticket.longitude == null) return;
 
     try {
+      // CHANGE 4: Call checkRecurrence before clustering check
+      String? previousTicketId = await checkRecurrence(ticket.latitude!, ticket.longitude!, ticket.departmentId);
+      bool isRecurrence = previousTicketId != null;
+
       // 1. Fetch potential Active Clusters
       // Optimization: In real app, use GeoQuery. For prototype, fetch Active clusters and filter in memory.
       final query = await _firestore.collection('CLUSTERS')
           .where('status', isEqualTo: 'Active')
+          .where('departmentId', isEqualTo: ticket.departmentId)
           .get();
 
       final clusters = query.docs
@@ -55,6 +146,22 @@ class ClusteringService {
           }
         }
       }
+
+      int clusterSize = 1;
+      if (bestMatch != null) {
+        clusterSize = bestMatch.ticketCount + 1;
+      }
+
+      // CHANGE 3: Write to ticketData
+      Map<String, dynamic> ticketData = {};
+      ticketData['escalationStartLevel'] = getEscalationStartLevel(clusterSize, isRecurrence);
+      ticketData['adjustedSlaHours'] = ((ticket.slaHours ?? 24) * getSlaReductionFactor(clusterSize)).round();
+      if (isRecurrence) {
+         ticketData['isRecurrence'] = true;
+         ticketData['previousTicketId'] = previousTicketId;
+      }
+      
+      await _firestore.collection('TICKETS').doc(ticket.ticketId).update(ticketData);
 
       if (bestMatch != null) {
         await _addToCluster(bestMatch, ticket);
@@ -119,7 +226,41 @@ class ClusteringService {
       ticketCount: 1,
     );
 
-    await _firestore.collection('CLUSTERS').doc(id).set(newCluster.toMap());
+    Map<String, dynamic> clusterData = newCluster.toMap();
+    clusterData['departmentId'] = ticket.departmentId; // injected for query
+    await _firestore.collection('CLUSTERS').doc(id).set(clusterData);
+  }
+
+  int getEscalationStartLevel(int clusterSize, bool isRecurrence) {
+    if (isRecurrence) return 2;
+    if (clusterSize >= 20) return 5;
+    if (clusterSize >= 10) return 3;
+    if (clusterSize >= 6)  return 2;
+    return 1;
+  }
+
+  double getSlaReductionFactor(int clusterSize) {
+    if (clusterSize >= 10) return 0.4;
+    if (clusterSize >= 6)  return 0.6;
+    if (clusterSize >= 3)  return 0.8;
+    return 1.0;
+  }
+
+  Future<String?> checkRecurrence(double lat, double lng, String departmentId) async {
+    final cutoff = Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 60)));
+    final query = await FirebaseFirestore.instance
+        .collection('TICKETS')
+        .where('departmentId', isEqualTo: departmentId)
+        .where('status', isEqualTo: 'closed')
+        .where('createdAt', isGreaterThan: cutoff)
+        .get();
+    for (final doc in query.docs) {
+      final dLat = (doc['latitude'] as double) - lat;
+      final dLng = (doc['longitude'] as double) - lng;
+      final distMeters = sqrt(dLat * dLat + dLng * dLng) * 111139;
+      if (distMeters < 150) return doc.id;
+    }
+    return null;
   }
 
   // Sync Status: If a ticket in a cluster is updated, update the cluster and siblings

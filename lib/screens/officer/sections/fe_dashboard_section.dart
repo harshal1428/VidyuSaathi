@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../provider/admin/theme_provider.dart';
 import '../../../constants/app_colors.dart';
 import '../../../services/database_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
 import '../../../widgets/smart_ticket_card.dart';
 import '../../../models/ticket_model.dart';
 import '../../../models/dashboard_stats_model.dart';
@@ -141,6 +141,7 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
                       icon: Icons.pending_actions,
                       color: Colors.orange,
                       isDark: isDark,
+                      onTap: () => _navigateToTickets(status: 'Pending'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -151,6 +152,7 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
                       icon: Icons.hourglass_top,
                       color: Colors.blue,
                       isDark: isDark,
+                      onTap: () => _navigateToTickets(status: 'In Progress'),
                     ),
                   ),
                 ],
@@ -166,16 +168,18 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
                       icon: Icons.check_circle,
                       color: Colors.green,
                       isDark: isDark,
+                      onTap: () => _navigateToTickets(status: 'Resolved'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
-                      title: 'Rejected', // Or Escalated/Rejected
-                      value: '${stats.escalated}', // Using escalated count for now as "Rejected/Escalated"
-                      icon: Icons.cancel,
+                      title: 'Escalated',
+                      value: '${stats.escalated}',
+                      icon: Icons.upload,
                       color: Colors.red,
                       isDark: isDark,
+                      onTap: () => _navigateToTickets(status: 'Escalated'),
                     ),
                   ),
                 ],
@@ -193,38 +197,52 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
     required IconData icon,
     required Color color,
     required bool isDark,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(isDark ? 0.15 : 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isDark ? 0.15 : 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.grey[400] : Colors.grey[700],
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey[400] : Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  void _navigateToTickets({String? status}) {
+    String type = 'my_tasks';
+    if (status == 'Pending') type = 'pending';
+    else if (status == 'In Progress') type = 'in_progress';
+    else if (status == 'Resolved') type = 'completed';
+    else if (status == 'Escalated') type = 'escalated';
+
+    Navigator.pushNamed(context, '/officer_tasks', arguments: {'type': type});
   }
 
   Widget _buildActiveComplaints(bool isDark) {
@@ -439,6 +457,8 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
   void _showRejectDialog(String ticketId) {
     final reasonController = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dbService = Provider.of<DatabaseService>(context, listen: false);
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
 
     showDialog(
       context: context,
@@ -503,7 +523,12 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
                 );
                 return;
               }
-              // TODO: Implement soft delete with reason
+              dbService.updateTicketStatus(
+                ticketId,
+                'Rejected',
+                officerId: user?.userId,
+                rejectionReason: reasonController.text.trim(),
+              );
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -524,41 +549,78 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
   }
 
   Widget _buildEscalationsSection(bool isDark) {
-    // Ideally fetch from 'ESCALATION_LOGS' where fromUser == currentUser
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+    final user = Provider.of<AuthService>(context).currentUser;
+    final dbService = Provider.of<DatabaseService>(context);
+
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<TicketModel>>(
+      stream: dbService.getOpenEscalatedTickets(user),
+      builder: (context, snapshot) {
+        final escalatedTickets = snapshot.data ?? [];
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isDark ? null : [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            border: isDark ? Border.all(color: AppColors.darkBorder) : null,
           ),
-        ],
-        border: isDark ? Border.all(color: AppColors.darkBorder) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Escalations',
-             style: TextStyle(
-               fontSize: 18,
-               fontWeight: FontWeight.bold,
-               color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-             ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Escalations',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${escalatedTickets.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (escalatedTickets.isEmpty)
+                const Center(child: Text('No recent escalations.')),
+              ...escalatedTickets.take(3).map(
+                (ticket) => SmartTicketCard(
+                  ticket: ticket,
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/officer_tasks',
+                      arguments: {'type': 'escalated'},
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const Center(child: Text("No recent escalations.")),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildNotificationsSection(bool isDark) {
+    final user = Provider.of<AuthService>(context).currentUser;
+    if (user == null) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -586,7 +648,22 @@ class _FEDashboardSectionState extends State<FEDashboardSection> {
              ),
           ),
            const SizedBox(height: 16),
-           const Center(child: Text("No new notifications.")),
+           StreamBuilder<int>(
+             stream: Provider.of<NotificationService>(context).getUnreadCount(user.userId),
+             builder: (context, snapshot) {
+               final unread = snapshot.data ?? 0;
+               if (unread == 0) {
+                 return const Center(child: Text("No new notifications."));
+               }
+               return Row(
+                 children: [
+                   const Icon(Icons.notifications_active, color: Colors.orange),
+                   const SizedBox(width: 8),
+                   Text('$unread unread notification(s)'),
+                 ],
+               );
+             },
+           ),
         ],
       ),
     );

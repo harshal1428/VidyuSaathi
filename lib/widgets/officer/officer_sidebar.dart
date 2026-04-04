@@ -5,8 +5,7 @@ import '../../screens/officer/cluster_list_screen.dart';
 import '../../screens/Officer/pages/officer_reports_screen.dart';
 import '../../screens/Officer/pages/officer_profile_screen.dart';
 import '../../screens/Officer/pages/officer_settings_screen.dart';
-import 'package:vidyusaathi/widgets/common/role_switcher.dart';
-import 'package:vidyusaathi/constants/app_colors.dart';
+import 'package:civic_core/constants/app_colors.dart';
 
 class OfficerSidebar extends StatelessWidget {
   final String userName;
@@ -82,7 +81,7 @@ class OfficerSidebar extends StatelessWidget {
           _buildDrawerItem(
             context,
             Icons.analytics,
-            'Reports',
+            'Reports & Heatmap',
             () {
               Navigator.pop(context);
               Navigator.push(

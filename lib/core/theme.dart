@@ -6,10 +6,10 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0056D2), // Professional Blue
+        seedColor: const Color(0xFF1A6B4A), // Professional Blue
         brightness: Brightness.light,
-        primary: const Color(0xFF0056D2),
-        secondary: const Color(0xFFF9A825), // Accent Yellow/Orange
+        primary: const Color(0xFF1A6B4A),
+        secondary: const Color(0xFF2196F3), // Accent Yellow/Orange
         surface: Colors.white,
         error: const Color(0xFFB00020),
       ),
@@ -17,12 +17,12 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Color(0xFF0056D2),
+        backgroundColor: Color(0xFF1A6B4A),
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF0056D2),
+          backgroundColor: const Color(0xFF1A6B4A),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -47,7 +47,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF0056D2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF1A6B4A), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
@@ -58,10 +58,10 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0056D2),
+        seedColor: const Color(0xFF1A6B4A),
         brightness: Brightness.dark,
-        primary: const Color(0xFF0056D2),
-        secondary: const Color(0xFFF9A825),
+        primary: const Color(0xFF1A6B4A),
+        secondary: const Color(0xFF2196F3),
         surface: const Color(0xFF1E1E2C),
         error: const Color(0xFFCF6679),
       ),
@@ -74,7 +74,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF0056D2),
+          backgroundColor: const Color(0xFF1A6B4A),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -99,14 +99,14 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF0056D2), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF1A6B4A), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
 
-  static const Color primaryColor = Color(0xFF0056D2);
+  static const Color primaryColor = Color(0xFF1A6B4A);
   
   static Color getPriorityColor(String priority) {
     switch (priority.toLowerCase()) {

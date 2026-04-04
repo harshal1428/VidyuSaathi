@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/constants.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/ticket_model.dart';
 import '../../../models/user_model.dart';
@@ -212,7 +213,7 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.vidyusaathi.app',
+            userAgentPackageName: 'com.civiccore.app',
           ),
           MarkerLayer(
             markers: ticketsWithLoc.map((t) => Marker(
@@ -257,14 +258,16 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
                     if (ticket.status != 'Resolved' && ticket.status != 'Closed') ...[
                       Row(
                         children: [
-                          if (ticket.status == 'Created' || ticket.status == 'Assigned')
+                          if (ticket.status == AppConstants.statusCreated ||
+                              ticket.status == AppConstants.statusAssigned ||
+                              ticket.status == AppConstants.statusAcknowledged)
                             Expanded(
                               child: ElevatedButton.icon(
                                 icon: const Icon(Icons.play_arrow),
                                 label: const Text('Start Work'),
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                                 onPressed: () {
-                                  dbService.updateTicketStatus(ticket.ticketId, 'In Progress', officerId: user?.userId);
+                                  dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusInProgress, officerId: user?.userId);
                                   Navigator.pop(context);
                                 },
                               ),
@@ -273,11 +276,23 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.check_circle),
-                              label: const Text('Resolve'),
+                              label: const Text('Solve'),
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                               onPressed: () {
-                                dbService.updateTicketStatus(ticket.ticketId, 'Resolved', officerId: user?.userId);
+                                dbService.updateTicketStatus(ticket.ticketId, AppConstants.statusResolved, officerId: user?.userId);
                                 Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.cancel),
+                              label: const Text('Reject'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showRejectDialog(context, ticket, user, dbService);
                               },
                             ),
                           ),
@@ -309,6 +324,54 @@ class _OfficerAllTicketsScreenState extends State<OfficerAllTicketsScreen> {
           const SizedBox(width: 8),
           Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
           Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  void _showRejectDialog(
+    BuildContext context,
+    TicketModel ticket,
+    UserModel? user,
+    DatabaseService dbService,
+  ) {
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reject Complaint'),
+        content: TextField(
+          controller: reasonController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Enter reason for rejection',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter rejection reason')),
+                );
+                return;
+              }
+              dbService.updateTicketStatus(
+                ticket.ticketId,
+                'Rejected',
+                officerId: user?.userId,
+                rejectionReason: reason,
+              );
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Reject'),
+          ),
         ],
       ),
     );

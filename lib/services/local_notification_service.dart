@@ -43,9 +43,9 @@ class LocalNotificationService {
   }) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'vidyusaathi_channel_id',
-      'Vidyut SurakshaSaathi Notifications',
-      channelDescription: 'Important updates for Vidyut SurakshaSaathi users',
+      'civiccore_channel_id',
+      'Smart Civic Complaint System Notifications',
+      channelDescription: 'Important updates for Smart Civic Complaint System users',
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',

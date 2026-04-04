@@ -3,7 +3,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import '../../models/ticket_model.dart';
-import '../../constants/app_colors.dart';
 
 class CitizenTicketDetailScreen extends StatelessWidget {
   final TicketModel ticket;
@@ -68,7 +67,7 @@ class CitizenTicketDetailScreen extends StatelessWidget {
                   children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.vidyusaathi.app',
+                      userAgentPackageName: 'com.civiccore.app',
                     ),
                     MarkerLayer(
                       markers: [
@@ -118,20 +117,20 @@ class CitizenTicketDetailScreen extends StatelessWidget {
                   const Divider(height: 32),
 
                   // Images
-                  if (ticket.imageUrls != null && ticket.imageUrls!.isNotEmpty) ...[
+                  if (ticket.imageUrls.isNotEmpty) ...[
                     const Text("Attached Images", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 120,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: ticket.imageUrls!.length,
+                        itemCount: ticket.imageUrls.length,
                         itemBuilder: (context, index) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 12),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.network(ticket.imageUrls![index], height: 120, width: 120, fit: BoxFit.cover),
+                              child: Image.network(ticket.imageUrls[index], height: 120, width: 120, fit: BoxFit.cover),
                             ),
                           );
                         },
@@ -143,6 +142,38 @@ class CitizenTicketDetailScreen extends StatelessWidget {
                   // Assignment Detail
                   if (ticket.officeId != null)
                      _buildDetailRow(Icons.business, "Assigned Office", ticket.officeId!),
+
+                  const SizedBox(height: 16),
+                  if ((ticket.resolutionDescription != null && ticket.resolutionDescription!.trim().isNotEmpty) ||
+                      ticket.resolutionImageUrls.isNotEmpty) ...[
+                    const Divider(height: 24),
+                    const Text("Officer Resolution Proof", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    if (ticket.resolutionDescription != null && ticket.resolutionDescription!.trim().isNotEmpty)
+                      _buildDetailRow(Icons.description_outlined, "Work Done", ticket.resolutionDescription!.trim()),
+                    if (ticket.resolutionImageUrls.isNotEmpty)
+                      SizedBox(
+                        height: 120,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: ticket.resolutionImageUrls.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  ticket.resolutionImageUrls[index],
+                                  height: 120,
+                                  width: 120,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),

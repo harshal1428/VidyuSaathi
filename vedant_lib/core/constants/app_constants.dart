@@ -1,10 +1,10 @@
-/// Application-wide constants for Mahavitran VidyuSaathi
+/// Application-wide constants for Pune Municipal Corporation CivicCore
 class AppConstants {
   // Private constructor to prevent instantiation
   AppConstants._();
 
-  static const String appName = 'VidyuSaathi';
-  static const String organizationName = 'Mahavitran';
+  static const String appName = 'CivicCore';
+  static const String organizationName = 'Pune Municipal Corporation';
 
   // Roles
   static const String roleCitizen = 'CITIZEN';

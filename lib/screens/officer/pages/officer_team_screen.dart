@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vidyusaathi/constants/app_colors.dart';
-import 'package:vidyusaathi/models/user_model.dart';
-import 'package:vidyusaathi/services/database_service.dart';
-import 'package:vidyusaathi/services/auth_service.dart';
+import 'package:civic_core/constants/app_colors.dart';
+import 'package:civic_core/models/user_model.dart';
+import 'package:civic_core/services/database_service.dart';
+import 'package:civic_core/services/auth_service.dart';
 
 class OfficerTeamScreen extends StatefulWidget {
   const OfficerTeamScreen({Key? key}) : super(key: key);

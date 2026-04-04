@@ -47,7 +47,7 @@ class _DyEEDashboardSectionState extends State<DyEEDashboardSection> {
           
           // Recent Critical / Escalated
            StreamBuilder<List<TicketModel>>(
-            stream: dbService.getOfficerTickets(user, status: 'Escalated'), // Or filter by critical locally
+            stream: dbService.getOpenEscalatedTickets(user),
             builder: (context, snapshot) {
               final tickets = snapshot.data ?? [];
               // Filter for critical or recent

@@ -154,7 +154,7 @@ class CitizenAppDrawer extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'VidyuSaathi helps citizens report electricity-related issues '
+              'CivicCore helps citizens report electricity-related issues '
               'and track their resolution in real-time.',
             ),
             const SizedBox(height: 12),

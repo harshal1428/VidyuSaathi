@@ -7,7 +7,6 @@ import 'escalations_screen.dart';
 import 'reports_screen.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/escalation_service.dart';
 import '../../widgets/common/logout_confirmation_wrapper.dart';
 
 // Enum for navigation
@@ -49,14 +48,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   Widget _buildDrawer() {
+    final user = Provider.of<AuthService>(context).currentUser;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
            UserAccountsDrawerHeader(
             decoration: const BoxDecoration(color: AppColors.lightPrimary),
-            accountName: const Text("Admin User"), // Placeholder
-            accountEmail: Text("admin@mahavitran.in"), // Placeholder
+            accountName: Text(user?.name.isNotEmpty == true ? user!.name : 'Admin User'),
+            accountEmail: Text(
+              (user?.officeId ?? '').isNotEmpty
+                  ? '${user!.email}\nOffice: ${user.officeId}'
+                  : (user?.email ?? 'admin@mahavitran.in'),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.dashboard),

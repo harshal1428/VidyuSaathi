@@ -4,6 +4,7 @@ import '../../../constants/app_colors.dart';
 import '../../../services/database_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../models/dashboard_stats_model.dart';
+import '../../../models/ticket_model.dart';
 import '../../../models/user_model.dart';
 import '../pages/officer_team_screen.dart';
 import '../../../widgets/smart_ticket_card.dart';
@@ -393,8 +394,8 @@ class _CEDashboardSectionState extends State<CEDashboardSection> {
     final dbService = Provider.of<DatabaseService>(context);
 
     // Dynamic Escalations
-    return StreamBuilder<List<dynamic>>( // Using ticket stream but filtering
-      stream: dbService.getOfficerTickets(user!, status: 'Escalated'), // Assuming status or we just fetch all and filter
+    return StreamBuilder<List<TicketModel>>(
+      stream: dbService.getOpenEscalatedTickets(user!),
       builder: (context, snapshot) {
          final tickets = snapshot.data ?? [];
          final criticalTickets = tickets.where((t) => t.priority.toLowerCase().contains('critical')).toList();

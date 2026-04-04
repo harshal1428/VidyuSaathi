@@ -5,7 +5,7 @@ import '../../../core/constants/app_constants.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  /// Builds the Mahavitran logo widget with fallback
+  /// Builds the Pune Municipal Corporation logo widget with fallback
   Widget _buildLogo(BuildContext context, {double height = 120}) {
     return Image.asset(
       'assets/images/logo.png',
@@ -54,7 +54,7 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // Mahavitran Section
+              // Pune Municipal Corporation Section
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(

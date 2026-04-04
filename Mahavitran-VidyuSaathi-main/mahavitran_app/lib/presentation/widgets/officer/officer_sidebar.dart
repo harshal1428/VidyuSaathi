@@ -4,8 +4,8 @@ import '../../screens/Officer/pages/officer_team_screen.dart';
 import '../../screens/Officer/pages/officer_reports_screen.dart';
 import '../../screens/Officer/pages/officer_profile_screen.dart';
 import '../../screens/Officer/pages/officer_settings_screen.dart';
-// import 'package:mahavitran_app/presentation/widgets/common/role_switcher.dart';
-import 'package:mahavitran_app/presentation/constants/app_colors.dart';
+// import 'package:civic_core/presentation/widgets/common/role_switcher.dart';
+import 'package:civic_core/presentation/constants/app_colors.dart';
 
 class OfficerSidebar extends StatelessWidget {
   final String userName;

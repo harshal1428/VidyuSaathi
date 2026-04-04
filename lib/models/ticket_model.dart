@@ -35,7 +35,22 @@ class TicketModel {
   final DateTime? updatedAt;
   final DateTime? resolvedAt;
   final DateTime? assignedAt;
+  final String? resolutionDescription;
+  final List<String> resolutionImageUrls;
+  final DateTime? resolutionSubmittedAt;
+  final String? resolutionSubmittedBy;
+  final String? citizenVerificationStatus;
+  final DateTime? citizenVerifiedAt;
+  final String? citizenVerificationNote;
   final String? rejectionReason;
+  final String departmentId;
+  final String rawInputText;
+  final Map<String, dynamic> nlpClassification;
+  final bool isRecurrence;
+  final String previousTicketId;
+  final List<String> linkedTicketIds;
+  final int escalationStartLevel;
+  final int adjustedSlaHours;
 
   TicketModel({
     required this.ticketId,
@@ -63,7 +78,22 @@ class TicketModel {
     this.updatedAt,
     this.resolvedAt,
     this.assignedAt,
+    this.resolutionDescription,
+    this.resolutionImageUrls = const [],
+    this.resolutionSubmittedAt,
+    this.resolutionSubmittedBy,
+    this.citizenVerificationStatus,
+    this.citizenVerifiedAt,
+    this.citizenVerificationNote,
     this.rejectionReason,
+    this.departmentId = '',
+    this.rawInputText = '',
+    this.nlpClassification = const {},
+    this.isRecurrence = false,
+    this.previousTicketId = '',
+    this.linkedTicketIds = const [],
+    this.escalationStartLevel = 1,
+    this.adjustedSlaHours = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -93,7 +123,22 @@ class TicketModel {
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'resolvedAt': resolvedAt != null ? Timestamp.fromDate(resolvedAt!) : null,
       'assignedAt': assignedAt != null ? Timestamp.fromDate(assignedAt!) : null,
+      'resolutionDescription': resolutionDescription,
+      'resolutionImageUrls': resolutionImageUrls,
+      'resolutionSubmittedAt': resolutionSubmittedAt != null ? Timestamp.fromDate(resolutionSubmittedAt!) : null,
+      'resolutionSubmittedBy': resolutionSubmittedBy,
+      'citizenVerificationStatus': citizenVerificationStatus,
+      'citizenVerifiedAt': citizenVerifiedAt != null ? Timestamp.fromDate(citizenVerifiedAt!) : null,
+      'citizenVerificationNote': citizenVerificationNote,
       'rejectionReason': rejectionReason,
+      'departmentId': departmentId,
+      'rawInputText': rawInputText,
+      'nlpClassification': nlpClassification,
+      'isRecurrence': isRecurrence,
+      'previousTicketId': previousTicketId,
+      'linkedTicketIds': linkedTicketIds,
+      'escalationStartLevel': escalationStartLevel,
+      'adjustedSlaHours': adjustedSlaHours,
     };
   }
 
@@ -124,7 +169,22 @@ class TicketModel {
       updatedAt: map['updatedAt'] != null ? (map['updatedAt'] as Timestamp).toDate() : null,
       resolvedAt: map['resolvedAt'] != null ? (map['resolvedAt'] as Timestamp).toDate() : null,
       assignedAt: map['assignedAt'] != null ? (map['assignedAt'] as Timestamp).toDate() : null,
+      resolutionDescription: map['resolutionDescription'],
+      resolutionImageUrls: List<String>.from(map['resolutionImageUrls'] ?? []),
+      resolutionSubmittedAt: map['resolutionSubmittedAt'] != null ? (map['resolutionSubmittedAt'] as Timestamp).toDate() : null,
+      resolutionSubmittedBy: map['resolutionSubmittedBy'],
+      citizenVerificationStatus: map['citizenVerificationStatus'],
+      citizenVerifiedAt: map['citizenVerifiedAt'] != null ? (map['citizenVerifiedAt'] as Timestamp).toDate() : null,
+      citizenVerificationNote: map['citizenVerificationNote'],
       rejectionReason: map['rejectionReason'],
+      departmentId: map['departmentId'] ?? '',
+      rawInputText: map['rawInputText'] ?? '',
+      nlpClassification: map['nlpClassification'] != null ? Map<String, dynamic>.from(map['nlpClassification']) : {},
+      isRecurrence: map['isRecurrence'] ?? false,
+      previousTicketId: map['previousTicketId'] ?? '',
+      linkedTicketIds: List<String>.from(map['linkedTicketIds'] ?? []),
+      escalationStartLevel: map['escalationStartLevel'] ?? 1,
+      adjustedSlaHours: map['adjustedSlaHours'] ?? 0,
     );
   }
 }
